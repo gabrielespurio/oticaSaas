@@ -8,9 +8,18 @@ import { z } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
+// Extended request interface to include user
+interface AuthenticatedRequest extends Request {
+  user?: {
+    userId: number;
+    username: string;
+    role: string;
+  };
+}
+
 // Middleware to verify JWT token
 function authenticateToken(req: any, res: any, next: any) {
-  const authHeader = req.headers['authorization'];
+  const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
@@ -299,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sales", authenticateToken, async (req, res) => {
+  app.post("/api/sales", authenticateToken, async (req: any, res: any) => {
     try {
       const { sale, items } = req.body;
       const saleNumber = `VEN-${Date.now()}`;
@@ -307,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedSale = insertSaleSchema.parse({
         ...sale,
         saleNumber,
-        userId: req.user.userId,
+        userId: req.user?.userId || 1,
       });
 
       const validatedItems = items.map((item: any) => ({
@@ -359,7 +368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedQuote = insertQuoteSchema.parse({
         ...quote,
         quoteNumber,
-        userId: req.user.userId,
+        userId: req.user?.userId || 1,
       });
 
       const validatedItems = items.map((item: any) => ({
@@ -430,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertAppointmentSchema.parse({
         ...req.body,
-        userId: req.user.userId,
+        userId: req.user?.userId || 1,
       });
       const appointment = await storage.createAppointment(validatedData);
       res.status(201).json(appointment);
