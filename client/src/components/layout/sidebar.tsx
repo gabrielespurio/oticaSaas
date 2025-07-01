@@ -54,9 +54,9 @@ export function Sidebar() {
           
           return (
             <Link key={item.name} href={item.href}>
-              <a
+              <div
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                   isActive
                     ? "text-sidebar-primary bg-sidebar-accent"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -64,7 +64,7 @@ export function Sidebar() {
               >
                 <Icon className="w-5 h-5" />
                 {item.name}
-              </a>
+              </div>
             </Link>
           );
         })}

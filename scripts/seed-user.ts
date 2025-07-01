@@ -1,33 +1,36 @@
+import bcrypt from "bcrypt";
 import { db } from "../server/db";
 import { users } from "../shared/schema";
-import bcrypt from "bcrypt";
 
 async function seedDefaultUser() {
   try {
-    // Check if user already exists
-    const existingUser = await db.select().from(users).limit(1);
+    // Check if users already exist
+    const existingUsers = await db.select().from(users).limit(1);
     
-    if (existingUser.length > 0) {
-      console.log("Default user already exists");
+    if (existingUsers.length > 0) {
+      console.log("Users already exist");
       return;
     }
 
     // Create default admin user
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    
-    const [user] = await db.insert(users).values({
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash("admin123", saltRounds);
+
+    const defaultUser = {
       username: "admin",
+      email: "admin@oticamanager.com",
       password: hashedPassword,
-      email: "admin@opticamanager.com",
       fullName: "Administrador",
-      role: "admin",
-      isActive: true,
-    }).returning();
+      role: "admin"
+    };
+
+    const insertedUser = await db.insert(users).values(defaultUser).returning();
 
     console.log("Default user created successfully:");
-    console.log("Username: admin");
-    console.log("Password: admin123");
-    console.log("Email: admin@opticamanager.com");
+    console.log(`- Username: ${insertedUser[0].username}`);
+    console.log(`- Email: ${insertedUser[0].email}`);
+    console.log(`- Password: admin123`);
+    console.log(`- Role: ${insertedUser[0].role}`);
     
   } catch (error) {
     console.error("Error creating default user:", error);

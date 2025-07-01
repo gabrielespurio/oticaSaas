@@ -275,6 +275,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/products/:id", authenticateToken, async (req, res) => {
+    try {
+      const product = await storage.getProduct(Number(req.params.id));
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      await storage.updateProduct(Number(req.params.id), { isActive: false });
+      res.json({ message: "Product deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/product-categories", authenticateToken, async (req, res) => {
     try {
       const categories = await storage.getProductCategories();
