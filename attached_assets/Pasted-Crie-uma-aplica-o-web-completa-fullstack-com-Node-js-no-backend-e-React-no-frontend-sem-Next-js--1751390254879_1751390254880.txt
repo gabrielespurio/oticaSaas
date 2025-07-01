@@ -1,0 +1,75 @@
+Crie uma aplicação web completa (fullstack) com Node.js no backend e React no frontend (sem Next.js), utilizando TypeScript em ambos.
+
+A aplicação é um SaaS de gestão para óticas e deve ter um layout moderno, responsivo e com navegação via menu lateral (sidebar). Use Tailwind CSS para o estilo e Radix UI para componentes acessíveis.
+
+Funcionalidades principais:
+📦 Módulo de Produtos / Estoque
+Cadastro de produtos como armações, lentes, óculos de sol e acessórios
+
+Controle de estoque por produto e variação (cor, tamanho, marca)
+
+Geração e leitura de código de barras ou QR Code
+
+Alerta de estoque mínimo
+
+👤 Módulo de Clientes (Pacientes)
+Cadastro de cliente com dados pessoais e contatos
+
+Histórico de compras
+
+Armazenamento de prescrições oftalmológicas com validade
+
+Upload de arquivos (PDF, imagem da receita)
+
+🧾 Vendas e Orçamentos
+Criação de orçamentos combinando armação + lente + adicionais
+
+PDF do orçamento com marca e dados da ótica
+
+Conversão de orçamento em venda
+
+Registro de forma de pagamento (Pix, cartão, dinheiro, crediário)
+
+💰 Módulo Financeiro
+Contas a pagar e receber
+
+Fluxo de caixa diário/mensal
+
+Relatórios de inadimplência
+
+Registro de comissões por vendedor
+
+🗓️ Agendamento / Agenda
+Cadastro de compromissos com cliente (ex: retirada de óculos)
+
+Notificações de entrega ou agendamento (sem necessidade de integração externa no momento)
+
+🧪 Prescrições e Exames
+Registro da receita do cliente com campos: esfera, cilindro, eixo, DNP, etc.
+
+Histórico completo de exames por cliente
+
+📈 Relatórios
+Produtos mais vendidos
+
+Lucro por categoria
+
+Clientes inativos há 6 meses
+
+Exportação para Excel/CSV
+
+Extras:
+Autenticação com JWT
+
+Middleware de validação com Zod
+
+Backend estruturado com rotas separadas e Drizzle ORM para banco de dados (PostgreSQL)
+
+Frontend estruturado com Vite, React, Tanstack Query e React Router
+
+Layout limpo e com modo escuro
+
+Organização do projeto em client/ e server/
+
+Importante: não usar Next.js. Utilize apenas React puro com Vite no frontend.
+Utilize o template tsx para rodar o backend em desenvolvimento, e esbuild para gerar o bundle de produção.
