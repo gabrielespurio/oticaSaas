@@ -76,6 +76,26 @@ export default function QuotesPage() {
     },
   });
 
+  // Function to fetch quote details with items
+  const fetchQuoteDetails = async (quoteId: number): Promise<QuoteWithDetails> => {
+    return apiRequest(`/api/quotes/${quoteId}`, "GET");
+  };
+
+  // Function to handle viewing quote details
+  const handleViewQuote = async (quote: QuoteWithDetails) => {
+    try {
+      const quoteDetails = await fetchQuoteDetails(quote.id);
+      setSelectedQuote(quoteDetails);
+    } catch (error) {
+      console.error("Error fetching quote details:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar detalhes do orçamento.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Mutations
   const createQuoteMutation = useMutation({
     mutationFn: async (data: QuoteFormData & { items: QuoteItemForm[] }) => {
@@ -491,7 +511,7 @@ export default function QuotesPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedQuote(quote)}
+                          onClick={() => handleViewQuote(quote)}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -519,17 +539,21 @@ export default function QuotesPage() {
                             <div>
                               <h4 className="font-semibold mb-2">Itens</h4>
                               <div className="space-y-2">
-                                {selectedQuote.items.map((item, idx) => (
-                                  <div key={idx} className="flex justify-between items-center border-b pb-2">
-                                    <div>
-                                      <p className="font-medium">{item.product.name}</p>
-                                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        Quantidade: {item.quantity}
-                                      </p>
+                                {selectedQuote.items && selectedQuote.items.length > 0 ? (
+                                  selectedQuote.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center border-b pb-2">
+                                      <div>
+                                        <p className="font-medium">{item.product.name}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                          Quantidade: {item.quantity}
+                                        </p>
+                                      </div>
+                                      <p className="font-semibold">R$ {parseFloat(item.unitPrice.toString()).toFixed(2)}</p>
                                     </div>
-                                    <p className="font-semibold">R$ {parseFloat(item.unitPrice.toString()).toFixed(2)}</p>
-                                  </div>
-                                ))}
+                                  ))
+                                ) : (
+                                  <p className="text-gray-500 dark:text-gray-400">Nenhum item encontrado</p>
+                                )}
                               </div>
                               <div className="mt-4 pt-4 border-t">
                                 <p className="text-lg font-semibold text-right">
