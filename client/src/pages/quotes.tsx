@@ -78,7 +78,7 @@ export default function QuotesPage() {
 
   // Function to fetch quote details with items
   const fetchQuoteDetails = async (quoteId: number): Promise<QuoteWithDetails> => {
-    return apiRequest(`/api/quotes/${quoteId}`, "GET");
+    return apiRequest("GET", `/api/quotes/${quoteId}`);
   };
 
   // Function to handle viewing quote details
@@ -117,7 +117,7 @@ export default function QuotesPage() {
         }))
       };
       
-      return apiRequest("/api/quotes", "POST", payload);
+      return apiRequest("POST", "/api/quotes", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
@@ -140,7 +140,7 @@ export default function QuotesPage() {
   });
 
   const deleteQuoteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/quotes/${id}`, "DELETE"),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/quotes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       toast({
@@ -158,7 +158,7 @@ export default function QuotesPage() {
   });
 
   const convertToSaleMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/quotes/${id}/convert-to-sale`, "POST"),
+    mutationFn: (id: number) => apiRequest("POST", `/api/quotes/${id}/convert-to-sale`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
