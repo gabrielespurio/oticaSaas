@@ -189,18 +189,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/customers", authenticateToken, async (req, res) => {
     try {
-      console.log('Creating customer with data:', req.body);
       const validatedData = insertCustomerSchema.parse(req.body);
-      console.log('Validated data:', validatedData);
+      
       const customer = await storage.createCustomer(validatedData);
-      console.log('Customer created:', customer);
       res.status(201).json(customer);
-    } catch (error) {
-      console.error('Error creating customer:', error);
+    } catch (error: any) {
+      
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Erro de validação", errors: error.errors });
       }
-      res.status(500).json({ message: "Internal server error", error: error.message });
+      
+      // Handle database constraint errors
+      if (error.code === '23505') {
+        if (error.constraint === 'customers_cpf_unique') {
+          return res.status(400).json({ message: "CPF já cadastrado" });
+        }
+        if (error.constraint === 'customers_email_unique') {
+          return res.status(400).json({ message: "Email já cadastrado" });
+        }
+      }
+      
+      // Check error message for duplicate key
+      if (error.message && error.message.includes('customers_cpf_unique')) {
+        return res.status(400).json({ message: "CPF já cadastrado" });
+      }
+      
+      if (error.message && error.message.includes('customers_email_unique')) {
+        return res.status(400).json({ message: "Email já cadastrado" });
+      }
+      
+      res.status(500).json({ message: "Erro interno do servidor" });
     }
   });
 

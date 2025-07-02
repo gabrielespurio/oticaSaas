@@ -112,7 +112,6 @@ export default function Customers() {
   // Mutations
   const createCustomerMutation = useMutation({
     mutationFn: (data: z.infer<typeof customerFormSchema>) => {
-      console.log('Frontend sending data:', data);
       return apiRequest("/api/customers", { method: "POST", body: JSON.stringify(data) });
     },
     onSuccess: () => {
@@ -121,9 +120,32 @@ export default function Customers() {
       customerForm.reset();
       toast({ title: "Cliente criado com sucesso!" });
     },
-    onError: (error) => {
-      console.error('Frontend error:', error);
-      toast({ title: "Erro ao criar cliente", variant: "destructive" });
+    onError: (error: any) => {
+      let errorMessage = "Erro ao criar cliente";
+      
+      // Try to parse the error response
+      try {
+        const errorText = error.message || "";
+        if (errorText.includes("CPF já cadastrado")) {
+          errorMessage = "CPF já cadastrado no sistema";
+        } else if (errorText.includes("Email já cadastrado")) {
+          errorMessage = "Email já cadastrado no sistema";
+        } else if (errorText.includes("400:")) {
+          // Extract JSON from error message
+          const jsonMatch = errorText.match(/400: ({.*})/);
+          if (jsonMatch) {
+            const errorData = JSON.parse(jsonMatch[1]);
+            errorMessage = errorData.message || errorMessage;
+          }
+        }
+      } catch (e) {
+        // Keep default error message
+      }
+      
+      toast({ 
+        title: errorMessage, 
+        variant: "destructive" 
+      });
     },
   });
 
