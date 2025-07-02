@@ -314,6 +314,37 @@ export const insertProductSchema = createInsertSchema(products).omit({
 export const insertPrescriptionSchema = createInsertSchema(prescriptions).omit({
   id: true,
   createdAt: true,
+}).extend({
+  issueDate: z.union([z.string(), z.date()]).transform((val) => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
+  expiryDate: z.union([z.string(), z.date(), z.null()]).optional().transform((val) => 
+    !val ? null : typeof val === 'string' ? new Date(val) : val
+  ),
+  rightSphere: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
+  rightCylinder: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
+  rightAdd: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
+  leftSphere: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
+  leftCylinder: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
+  leftAdd: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
+  rightPd: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
+  leftPd: z.union([z.string(), z.number(), z.null()]).optional().transform((val) => 
+    val === null || val === undefined ? null : String(val)
+  ),
 });
 
 export const insertSaleSchema = createInsertSchema(sales).omit({
