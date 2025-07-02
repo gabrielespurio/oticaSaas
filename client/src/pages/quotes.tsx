@@ -79,7 +79,25 @@ export default function QuotesPage() {
   // Mutations
   const createQuoteMutation = useMutation({
     mutationFn: async (data: QuoteFormData & { items: QuoteItemForm[] }) => {
-      return apiRequest("/api/quotes", "POST", data);
+      const { items, ...quote } = data;
+      
+      // Calcular total amount
+      const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
+      
+      const payload = {
+        quote: {
+          ...quote,
+          totalAmount: totalAmount.toString(),
+        },
+        items: items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice.toString(),
+          totalPrice: item.totalPrice.toString(),
+        }))
+      };
+      
+      return apiRequest("/api/quotes", "POST", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
@@ -91,10 +109,11 @@ export default function QuotesPage() {
       form.reset();
       setQuoteItems([]);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Erro ao criar orçamento:", error);
       toast({
         title: "Erro",
-        description: "Erro ao criar orçamento.",
+        description: error?.message || "Erro ao criar orçamento.",
         variant: "destructive",
       });
     },
@@ -150,7 +169,15 @@ export default function QuotesPage() {
     const updatedItems = [...quoteItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     
-    if (field === 'quantity' || field === 'unitPrice') {
+    // Se selecionou um produto, preencher o preço automaticamente
+    if (field === 'productId') {
+      const selectedProduct = products.find(p => p.id === value);
+      if (selectedProduct) {
+        updatedItems[index].unitPrice = parseFloat(selectedProduct.salePrice);
+      }
+    }
+    
+    if (field === 'quantity' || field === 'unitPrice' || field === 'productId') {
       updatedItems[index].totalPrice = updatedItems[index].quantity * updatedItems[index].unitPrice;
     }
     
@@ -162,6 +189,20 @@ export default function QuotesPage() {
       toast({
         title: "Erro",
         description: "Adicione pelo menos um produto ao orçamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar se todos os produtos estão selecionados
+    const invalidItems = quoteItems.filter(item => 
+      !item.productId || item.quantity <= 0 || item.unitPrice <= 0
+    );
+    
+    if (invalidItems.length > 0) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos dos produtos corretamente.",
         variant: "destructive",
       });
       return;
