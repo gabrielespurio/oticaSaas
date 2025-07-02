@@ -161,6 +161,10 @@ export default function QuotesPage() {
     setQuoteItems([...quoteItems, { productId: 0, quantity: 1, unitPrice: 0, totalPrice: 0 }]);
   };
 
+  const getTotalAmount = () => {
+    return quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  };
+
   const removeQuoteItem = (index: number) => {
     setQuoteItems(quoteItems.filter((_, i) => i !== index));
   };
@@ -397,11 +401,12 @@ export default function QuotesPage() {
                       </Table>
                     )}
 
-                    {totalAmount > 0 && (
-                      <div className="mt-4 text-right">
-                        <p className="text-lg font-semibold">
-                          Total: R$ {totalAmount.toFixed(2)}
-                        </p>
+                    {quoteItems.length > 0 && getTotalAmount() > 0 && (
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="flex justify-between items-center text-lg font-semibold">
+                          <span>Total:</span>
+                          <span>R$ {getTotalAmount().toFixed(2).replace('.', ',')}</span>
+                        </div>
                       </div>
                     )}
                   </div>

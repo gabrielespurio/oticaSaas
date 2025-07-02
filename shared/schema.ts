@@ -359,6 +359,9 @@ export const insertSaleItemSchema = createInsertSchema(saleItems).omit({
 export const insertQuoteSchema = createInsertSchema(quotes).omit({
   id: true,
   createdAt: true,
+}).extend({
+  validUntil: z.string().transform((val) => new Date(val)),
+  finalAmount: z.string().optional(),
 });
 
 export const insertQuoteItemSchema = createInsertSchema(quoteItems).omit({

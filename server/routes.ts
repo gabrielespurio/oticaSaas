@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, insertPrescriptionSchema, insertPrescriptionFileSchema, insertAppointmentSchema, insertFinancialAccountSchema } from "@shared/schema";
+import { insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, insertQuoteItemSchema, insertPrescriptionSchema, insertPrescriptionFileSchema, insertAppointmentSchema, insertFinancialAccountSchema } from "@shared/schema";
 import { z } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -513,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedSale = insertSaleSchema.parse({
         ...sale,
         saleNumber,
-        userId: req.user?.userId || 1,
+        userId: (req as any).user?.userId || 1,
       });
 
       const validatedItems = items.map((item: any) => ({
@@ -562,18 +562,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { quote, items } = req.body;
       const quoteNumber = `ORC-${Date.now()}`;
       
+      // Calcular finalAmount (totalAmount - discountAmount)
+      const totalAmount = parseFloat(quote.totalAmount || "0");
+      const discountAmount = parseFloat(quote.discountAmount || "0");
+      const finalAmount = totalAmount - discountAmount;
+      
       const validatedQuote = insertQuoteSchema.parse({
         ...quote,
         quoteNumber,
-        userId: req.user?.userId || 1,
+        userId: (req as any).user?.userId || 1,
+        finalAmount: finalAmount.toString(),
+        validUntil: quote.validUntil,
       });
 
-      const validatedItems = items.map((item: any) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-      }));
+      const validatedItems = items.map((item: any) => 
+        insertQuoteItemSchema.parse({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+        })
+      );
 
       const newQuote = await storage.createQuote(validatedQuote, validatedItems);
       res.status(201).json(newQuote);
@@ -581,6 +590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      console.error("Error creating quote:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -636,7 +646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertAppointmentSchema.parse({
         ...req.body,
-        userId: req.user?.userId || 1,
+        userId: (req as any).user?.userId || 1,
       });
       const appointment = await storage.createAppointment(validatedData);
       res.status(201).json(appointment);
