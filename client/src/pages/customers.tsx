@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -376,7 +377,12 @@ export default function Customers() {
                         <FormItem>
                           <FormLabel>CPF *</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="000.000.000-00" />
+                            <MaskedInput 
+                              mask="cpf" 
+                              placeholder="000.000.000-00"
+                              onChange={(unmasked, masked) => field.onChange(unmasked)}
+                              value={field.value || ''}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -406,7 +412,12 @@ export default function Customers() {
                         <FormItem>
                           <FormLabel>Telefone</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="(11) 99999-9999" />
+                            <MaskedInput 
+                              mask="phone" 
+                              placeholder="(11) 99999-9999"
+                              onChange={(unmasked, masked) => field.onChange(unmasked)}
+                              value={field.value || ''}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -528,7 +539,12 @@ export default function Customers() {
                       <FormItem>
                         <FormLabel>CEP</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="00000-000" />
+                          <MaskedInput 
+                            mask="cep" 
+                            placeholder="00000-000"
+                            onChange={(unmasked, masked) => field.onChange(unmasked)}
+                            value={field.value || ''}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -836,7 +852,12 @@ export default function Customers() {
                       <FormItem>
                         <FormLabel>CPF</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="000.000.000-00" />
+                          <MaskedInput 
+                            mask="cpf" 
+                            placeholder="000.000.000-00"
+                            onChange={(unmasked, masked) => field.onChange(unmasked)}
+                            value={field.value || ''}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -866,7 +887,12 @@ export default function Customers() {
                       <FormItem>
                         <FormLabel>Telefone</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="(11) 99999-9999" />
+                          <MaskedInput 
+                            mask="phone" 
+                            placeholder="(11) 99999-9999"
+                            onChange={(unmasked, masked) => field.onChange(unmasked)}
+                            value={field.value || ''}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -988,7 +1014,12 @@ export default function Customers() {
                     <FormItem>
                       <FormLabel>CEP</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="00000-000" />
+                        <MaskedInput 
+                          mask="cep" 
+                          placeholder="00000-000"
+                          onChange={(unmasked, masked) => field.onChange(unmasked)}
+                          value={field.value || ''}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
