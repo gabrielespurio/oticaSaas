@@ -70,7 +70,7 @@ export interface IStorage {
   // Quotes
   getQuotes(limit?: number, offset?: number): Promise<(Quote & { customer: Customer })[]>;
   getQuote(id: number): Promise<Quote | undefined>;
-  getQuoteWithItems(id: number): Promise<(Quote & { items: (QuoteItem & { product: Product })[] }) | undefined>;
+  getQuoteWithItems(id: number): Promise<(Quote & { customer: Customer; items: (QuoteItem & { product: Product })[] }) | undefined>;
   createQuote(quote: InsertQuote, items: InsertQuoteItem[]): Promise<Quote>;
   updateQuote(id: number, quote: Partial<InsertQuote>): Promise<Quote | undefined>;
   convertQuoteToSale(quoteId: number): Promise<Sale | undefined>;
@@ -454,9 +454,26 @@ export class DatabaseStorage implements IStorage {
     return quote || undefined;
   }
 
-  async getQuoteWithItems(id: number): Promise<(Quote & { items: (QuoteItem & { product: Product })[] }) | undefined> {
-    const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
-    if (!quote) return undefined;
+  async getQuoteWithItems(id: number): Promise<(Quote & { customer: Customer; items: (QuoteItem & { product: Product })[] }) | undefined> {
+    const [quoteWithCustomer] = await db.select({
+      id: quotes.id,
+      customerId: quotes.customerId,
+      userId: quotes.userId,
+      quoteNumber: quotes.quoteNumber,
+      totalAmount: quotes.totalAmount,
+      discountAmount: quotes.discountAmount,
+      finalAmount: quotes.finalAmount,
+      status: quotes.status,
+      validUntil: quotes.validUntil,
+      notes: quotes.notes,
+      createdAt: quotes.createdAt,
+      customer: customers,
+    })
+      .from(quotes)
+      .innerJoin(customers, eq(quotes.customerId, customers.id))
+      .where(eq(quotes.id, id));
+
+    if (!quoteWithCustomer) return undefined;
 
     const items = await db.select({
       id: quoteItems.id,
@@ -471,7 +488,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(products, eq(quoteItems.productId, products.id))
       .where(eq(quoteItems.quoteId, id));
 
-    return { ...quote, items };
+    return { ...quoteWithCustomer, items };
   }
 
   async createQuote(insertQuote: InsertQuote, items: InsertQuoteItem[]): Promise<Quote> {
