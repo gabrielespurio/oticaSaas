@@ -11,7 +11,8 @@ import {
   BarChart3, 
   Glasses,
   Moon,
-  Sun
+  Sun,
+  FileEdit
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,7 +21,8 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: ChartLine },
   { name: "Produtos & Estoque", href: "/products", icon: Package },
   { name: "Clientes", href: "/customers", icon: Users },
-  { name: "Vendas & Orçamentos", href: "/sales", icon: ShoppingCart },
+  { name: "Orçamentos", href: "/quotes", icon: FileEdit },
+  { name: "Vendas", href: "/sales", icon: ShoppingCart },
   { name: "Financeiro", href: "/financial", icon: DollarSign },
   { name: "Agendamentos", href: "/appointments", icon: Calendar },
   { name: "Prescrições", href: "/prescriptions", icon: FileText },
