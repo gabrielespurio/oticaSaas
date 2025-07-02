@@ -79,7 +79,8 @@ export default function Customers() {
   // Queries
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["/api/customers", search],
-    queryFn: () => apiRequest(`/api/customers${search ? `?search=${search}` : ""}`),
+    queryFn: () => apiRequest(`/api/customers${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`),
+    enabled: true,
   });
 
   const { data: customerDetails } = useQuery({
@@ -791,7 +792,6 @@ export default function Customers() {
 
             <Form {...editForm}>
               <form onSubmit={editForm.handleSubmit(onUpdateCustomer)} className="space-y-4">
-                {/* Same form fields as create customer dialog - shortened for brevity */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={editForm.control}
@@ -812,7 +812,84 @@ export default function Customers() {
                     name="cpf"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CPF *</FormLabel>
+                        <FormLabel>CPF</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="000.000.000-00" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>E-mail</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="(11) 99999-9999" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator />
+                <h4 className="font-medium">Endereço</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="street"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Logradouro</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="complement"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Complemento</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -821,6 +898,94 @@ export default function Customers() {
                     )}
                   />
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="neighborhood"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bairro</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cidade</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estado</FormLabel>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="SP">São Paulo</SelectItem>
+                              <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                              <SelectItem value="MG">Minas Gerais</SelectItem>
+                              <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                              <SelectItem value="PR">Paraná</SelectItem>
+                              <SelectItem value="SC">Santa Catarina</SelectItem>
+                              <SelectItem value="BA">Bahia</SelectItem>
+                              <SelectItem value="GO">Goiás</SelectItem>
+                              <SelectItem value="PE">Pernambuco</SelectItem>
+                              <SelectItem value="CE">Ceará</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={editForm.control}
+                  name="zipCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="00000-000" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <DialogFooter>
                   <Button 

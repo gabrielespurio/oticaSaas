@@ -9,7 +9,7 @@ import {
   type Appointment, type InsertAppointment
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, count, sql, like, or } from "drizzle-orm";
+import { eq, desc, and, gte, lte, count, sql, like, or, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -163,8 +163,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(customers.isActive, true),
           or(
-            like(customers.fullName, `%${query}%`),
-            like(customers.email, `%${query}%`),
+            ilike(customers.fullName, `%${query}%`),
+            ilike(customers.email, `%${query}%`),
             like(customers.phone, `%${query}%`),
             like(customers.cpf, `%${query}%`)
           )
