@@ -79,7 +79,7 @@ export default function Customers() {
   // Queries
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["/api/customers", search],
-    queryFn: () => apiRequest(`/api/customers${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`),
+    queryFn: () => apiRequest('GET', `/api/customers${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`),
     enabled: true,
   });
 
@@ -89,9 +89,9 @@ export default function Customers() {
       if (!selectedCustomer?.id) return null;
       
       const [customer, purchaseHistory, prescriptions] = await Promise.all([
-        apiRequest(`/api/customers/${selectedCustomer.id}`),
-        apiRequest(`/api/customers/${selectedCustomer.id}/purchase-history`),
-        apiRequest(`/api/customers/${selectedCustomer.id}/prescriptions`),
+        apiRequest('GET', `/api/customers/${selectedCustomer.id}`),
+        apiRequest('GET', `/api/customers/${selectedCustomer.id}/purchase-history`),
+        apiRequest('GET', `/api/customers/${selectedCustomer.id}/prescriptions`),
       ]);
 
       return {
@@ -105,7 +105,7 @@ export default function Customers() {
 
   const { data: prescriptionDetails } = useQuery({
     queryKey: ["/api/prescriptions", selectedPrescription?.id],
-    queryFn: () => apiRequest(`/api/prescriptions/${selectedPrescription?.id}`),
+    queryFn: () => apiRequest('GET', `/api/prescriptions/${selectedPrescription?.id}`),
     enabled: !!selectedPrescription?.id,
   });
 
