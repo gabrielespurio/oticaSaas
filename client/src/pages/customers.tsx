@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,18 +46,18 @@ const customerFormSchema = z.object({
 const prescriptionFormSchema = z.object({
   customerId: z.number(),
   doctorName: z.string().min(1, "Nome do médico é obrigatório"),
-  issueDate: z.string().transform((str) => new Date(str)),
-  expiryDate: z.string().optional().transform((str) => str ? new Date(str) : undefined),
-  rightSphere: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
-  rightCylinder: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
-  rightAxis: z.string().optional().transform((str) => str && str.trim() !== '' ? parseInt(str) : undefined),
-  rightAdd: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
-  leftSphere: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
-  leftCylinder: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
-  leftAxis: z.string().optional().transform((str) => str && str.trim() !== '' ? parseInt(str) : undefined),
-  leftAdd: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
-  rightPd: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
-  leftPd: z.string().optional().transform((str) => str && str.trim() !== '' ? parseFloat(str) : undefined),
+  issueDate: z.string().min(1, "Data de emissão é obrigatória"),
+  expiryDate: z.string().optional(),
+  rightSphere: z.string().optional(),
+  rightCylinder: z.string().optional(),
+  rightAxis: z.string().optional(),
+  rightAdd: z.string().optional(),
+  leftSphere: z.string().optional(),
+  leftCylinder: z.string().optional(),
+  leftAxis: z.string().optional(),
+  leftAdd: z.string().optional(),
+  rightPd: z.string().optional(),
+  leftPd: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -74,6 +74,7 @@ export default function Customers() {
   const [isPrescriptionDialogOpen, setIsPrescriptionDialogOpen] = useState(false);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [prescriptionFiles, setPrescriptionFiles] = useState<File[]>([]);
+  const [editingPrescription, setEditingPrescription] = useState<Prescription | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -170,17 +171,17 @@ export default function Customers() {
       const payload = {
         ...data,
         issueDate: new Date(data.issueDate).toISOString(),
-        expiryDate: data.expiryDate ? new Date(data.expiryDate).toISOString() : null,
-        rightSphere: data.rightSphere ? parseFloat(data.rightSphere) : null,
-        rightCylinder: data.rightCylinder ? parseFloat(data.rightCylinder) : null,
-        rightAxis: data.rightAxis ? parseInt(data.rightAxis) : null,
-        rightAdd: data.rightAdd ? parseFloat(data.rightAdd) : null,
-        leftSphere: data.leftSphere ? parseFloat(data.leftSphere) : null,
-        leftCylinder: data.leftCylinder ? parseFloat(data.leftCylinder) : null,
-        leftAxis: data.leftAxis ? parseInt(data.leftAxis) : null,
-        leftAdd: data.leftAdd ? parseFloat(data.leftAdd) : null,
-        rightPd: data.rightPd ? parseFloat(data.rightPd) : null,
-        leftPd: data.leftPd ? parseFloat(data.leftPd) : null,
+        expiryDate: data.expiryDate && data.expiryDate.trim() !== '' ? new Date(data.expiryDate).toISOString() : null,
+        rightSphere: data.rightSphere && data.rightSphere.trim() !== '' ? parseFloat(data.rightSphere) : null,
+        rightCylinder: data.rightCylinder && data.rightCylinder.trim() !== '' ? parseFloat(data.rightCylinder) : null,
+        rightAxis: data.rightAxis && data.rightAxis.trim() !== '' ? parseInt(data.rightAxis) : null,
+        rightAdd: data.rightAdd && data.rightAdd.trim() !== '' ? parseFloat(data.rightAdd) : null,
+        leftSphere: data.leftSphere && data.leftSphere.trim() !== '' ? parseFloat(data.leftSphere) : null,
+        leftCylinder: data.leftCylinder && data.leftCylinder.trim() !== '' ? parseFloat(data.leftCylinder) : null,
+        leftAxis: data.leftAxis && data.leftAxis.trim() !== '' ? parseInt(data.leftAxis) : null,
+        leftAdd: data.leftAdd && data.leftAdd.trim() !== '' ? parseFloat(data.leftAdd) : null,
+        rightPd: data.rightPd && data.rightPd.trim() !== '' ? parseFloat(data.rightPd) : null,
+        leftPd: data.leftPd && data.leftPd.trim() !== '' ? parseFloat(data.leftPd) : null,
       };
       return apiRequest("POST", "/api/prescriptions", payload);
     },
@@ -199,10 +200,43 @@ export default function Customers() {
       setIsPrescriptionDialogOpen(false);
       prescriptionForm.reset();
       setPrescriptionFiles([]);
+      setEditingPrescription(null);
       toast({ title: "Prescrição criada com sucesso!" });
     },
     onError: () => {
       toast({ title: "Erro ao criar prescrição", variant: "destructive" });
+    },
+  });
+
+  const updatePrescriptionMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: z.infer<typeof prescriptionFormSchema> }) => {
+      const payload = {
+        ...data,
+        issueDate: new Date(data.issueDate).toISOString(),
+        expiryDate: data.expiryDate && data.expiryDate.trim() !== '' ? new Date(data.expiryDate).toISOString() : null,
+        rightSphere: data.rightSphere && data.rightSphere.trim() !== '' ? parseFloat(data.rightSphere) : null,
+        rightCylinder: data.rightCylinder && data.rightCylinder.trim() !== '' ? parseFloat(data.rightCylinder) : null,
+        rightAxis: data.rightAxis && data.rightAxis.trim() !== '' ? parseInt(data.rightAxis) : null,
+        rightAdd: data.rightAdd && data.rightAdd.trim() !== '' ? parseFloat(data.rightAdd) : null,
+        leftSphere: data.leftSphere && data.leftSphere.trim() !== '' ? parseFloat(data.leftSphere) : null,
+        leftCylinder: data.leftCylinder && data.leftCylinder.trim() !== '' ? parseFloat(data.leftCylinder) : null,
+        leftAxis: data.leftAxis && data.leftAxis.trim() !== '' ? parseInt(data.leftAxis) : null,
+        leftAdd: data.leftAdd && data.leftAdd.trim() !== '' ? parseFloat(data.leftAdd) : null,
+        rightPd: data.rightPd && data.rightPd.trim() !== '' ? parseFloat(data.rightPd) : null,
+        leftPd: data.leftPd && data.leftPd.trim() !== '' ? parseFloat(data.leftPd) : null,
+      };
+      return apiRequest("PUT", `/api/prescriptions/${id}`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      setIsPrescriptionDialogOpen(false);
+      prescriptionForm.reset();
+      setPrescriptionFiles([]);
+      setEditingPrescription(null);
+      toast({ title: "Prescrição atualizada com sucesso!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar prescrição", variant: "destructive" });
     },
   });
 
@@ -253,6 +287,48 @@ export default function Customers() {
     },
   });
 
+  // Effect to populate form when editing
+  useEffect(() => {
+    if (editingPrescription) {
+      prescriptionForm.reset({
+        customerId: editingPrescription.customerId,
+        doctorName: (editingPrescription.doctorName ?? "") as string,
+        issueDate: format(new Date(editingPrescription.issueDate), "yyyy-MM-dd"),
+        expiryDate: editingPrescription.expiryDate ? format(new Date(editingPrescription.expiryDate), "yyyy-MM-dd") : "",
+        rightSphere: editingPrescription.rightSphere ?? "",
+        rightCylinder: editingPrescription.rightCylinder ?? "",
+        rightAxis: editingPrescription.rightAxis?.toString() ?? "",
+        rightAdd: editingPrescription.rightAdd ?? "",
+        leftSphere: editingPrescription.leftSphere ?? "",
+        leftCylinder: editingPrescription.leftCylinder ?? "",
+        leftAxis: editingPrescription.leftAxis?.toString() ?? "",
+        leftAdd: editingPrescription.leftAdd ?? "",
+        rightPd: editingPrescription.rightPd ?? "",
+        leftPd: editingPrescription.leftPd ?? "",
+        notes: editingPrescription.notes ?? "",
+      });
+    } else {
+      // Reset to default values when not editing
+      prescriptionForm.reset({
+        customerId: selectedCustomer?.id || 0,
+        doctorName: "",
+        issueDate: format(new Date(), "yyyy-MM-dd"),
+        expiryDate: format(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+        rightSphere: "",
+        rightCylinder: "",
+        rightAxis: "",
+        rightAdd: "",
+        leftSphere: "",
+        leftCylinder: "",
+        leftAxis: "",
+        leftAdd: "",
+        rightPd: "",
+        leftPd: "",
+        notes: "",
+      });
+    }
+  }, [editingPrescription, selectedCustomer, prescriptionForm]);
+
   const onCreateCustomer = (data: z.infer<typeof customerFormSchema>) => {
     createCustomerMutation.mutate(data);
   };
@@ -268,6 +344,23 @@ export default function Customers() {
       ...data,
       customerId: selectedCustomer?.id || 0,
     });
+  };
+
+  const onSubmitPrescription = (data: z.infer<typeof prescriptionFormSchema>) => {
+    if (editingPrescription) {
+      updatePrescriptionMutation.mutate({ 
+        id: editingPrescription.id, 
+        data: {
+          ...data,
+          customerId: selectedCustomer?.id || 0,
+        }
+      });
+    } else {
+      createPrescriptionMutation.mutate({
+        ...data,
+        customerId: selectedCustomer?.id || 0,
+      });
+    }
   };
 
   const formatCurrency = (value: string | number) => {
@@ -815,6 +908,16 @@ export default function Customers() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingPrescription(prescription);
+                                    setIsPrescriptionDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
                               </div>
                             </div>
                           </CardHeader>
@@ -1101,17 +1204,25 @@ export default function Customers() {
         </Dialog>
 
         {/* Add Prescription Dialog */}
-        <Dialog open={isPrescriptionDialogOpen} onOpenChange={setIsPrescriptionDialogOpen}>
+        <Dialog open={isPrescriptionDialogOpen} onOpenChange={(open) => {
+          setIsPrescriptionDialogOpen(open);
+          if (!open) {
+            setEditingPrescription(null);
+            setPrescriptionFiles([]);
+          }
+        }}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nova Prescrição</DialogTitle>
+              <DialogTitle>{editingPrescription ? "Editar Prescrição" : "Nova Prescrição"}</DialogTitle>
               <DialogDescription>
-                Adicione uma nova prescrição para {selectedCustomer?.fullName}
+                {editingPrescription 
+                  ? `Editando prescrição de ${selectedCustomer?.fullName}` 
+                  : `Adicione uma nova prescrição para ${selectedCustomer?.fullName}`}
               </DialogDescription>
             </DialogHeader>
 
             <Form {...prescriptionForm}>
-              <form onSubmit={prescriptionForm.handleSubmit(onCreatePrescription)} className="space-y-4">
+              <form onSubmit={prescriptionForm.handleSubmit(onSubmitPrescription)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={prescriptionForm.control}
@@ -1354,9 +1465,12 @@ export default function Customers() {
                 <DialogFooter>
                   <Button 
                     type="submit" 
-                    disabled={createPrescriptionMutation.isPending}
+                    disabled={createPrescriptionMutation.isPending || updatePrescriptionMutation.isPending}
                   >
-                    {createPrescriptionMutation.isPending ? "Criando..." : "Criar Prescrição"}
+                    {editingPrescription 
+                      ? (updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Alterações")
+                      : (createPrescriptionMutation.isPending ? "Criando..." : "Criar Prescrição")
+                    }
                   </Button>
                 </DialogFooter>
               </form>
