@@ -24,6 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { fetchAddressByCEP } from "@/lib/viacep";
 
 // Form schemas
 const customerFormSchema = z.object({
@@ -428,6 +429,39 @@ export default function Customers() {
                   <Separator />
                   <h4 className="font-medium">Endereço</h4>
                   
+                  {/* CEP Field - comes first for auto-fill */}
+                  <FormField
+                    control={customerForm.control}
+                    name="zipCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CEP</FormLabel>
+                        <FormControl>
+                          <MaskedInput 
+                            mask="cep" 
+                            placeholder="00000-000"
+                            onChange={async (unmasked, masked) => {
+                              field.onChange(unmasked);
+                              
+                              // Auto-fill address when CEP is complete (8 digits)
+                              if (unmasked.length === 8) {
+                                const addressData = await fetchAddressByCEP(unmasked);
+                                if (addressData) {
+                                  customerForm.setValue('street', addressData.logradouro);
+                                  customerForm.setValue('neighborhood', addressData.bairro);
+                                  customerForm.setValue('city', addressData.localidade);
+                                  customerForm.setValue('state', addressData.uf);
+                                }
+                              }
+                            }}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                       control={customerForm.control}
@@ -472,7 +506,7 @@ export default function Customers() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={customerForm.control}
                       name="neighborhood"
@@ -489,26 +523,12 @@ export default function Customers() {
                     
                     <FormField
                       control={customerForm.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cidade</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={customerForm.control}
                       name="state"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Estado</FormLabel>
                           <FormControl>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione" />
                               </SelectTrigger>
@@ -531,25 +551,23 @@ export default function Customers() {
                       )}
                     />
                   </div>
-
+                  
+                  {/* Cidade gets its own row for more space */}
                   <FormField
                     control={customerForm.control}
-                    name="zipCode"
+                    name="city"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CEP</FormLabel>
+                        <FormLabel>Cidade</FormLabel>
                         <FormControl>
-                          <MaskedInput 
-                            mask="cep" 
-                            placeholder="00000-000"
-                            onChange={(unmasked, masked) => field.onChange(unmasked)}
-                            value={field.value || ''}
-                          />
+                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+
 
                   <FormField
                     control={customerForm.control}
@@ -903,6 +921,39 @@ export default function Customers() {
                 <Separator />
                 <h4 className="font-medium">Endereço</h4>
                 
+                {/* CEP Field - comes first for auto-fill */}
+                <FormField
+                  control={editForm.control}
+                  name="zipCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <MaskedInput 
+                          mask="cep" 
+                          placeholder="00000-000"
+                          onChange={async (unmasked, masked) => {
+                            field.onChange(unmasked);
+                            
+                            // Auto-fill address when CEP is complete (8 digits)
+                            if (unmasked.length === 8) {
+                              const addressData = await fetchAddressByCEP(unmasked);
+                              if (addressData) {
+                                editForm.setValue('street', addressData.logradouro);
+                                editForm.setValue('neighborhood', addressData.bairro);
+                                editForm.setValue('city', addressData.localidade);
+                                editForm.setValue('state', addressData.uf);
+                              }
+                            }
+                          }}
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={editForm.control}
@@ -947,27 +998,13 @@ export default function Customers() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={editForm.control}
                     name="neighborhood"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Bairro</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={editForm.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cidade</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -1006,25 +1043,23 @@ export default function Customers() {
                     )}
                   />
                 </div>
-
+                
+                {/* Cidade gets its own row for more space */}
                 <FormField
                   control={editForm.control}
-                  name="zipCode"
+                  name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>CEP</FormLabel>
+                      <FormLabel>Cidade</FormLabel>
                       <FormControl>
-                        <MaskedInput 
-                          mask="cep" 
-                          placeholder="00000-000"
-                          onChange={(unmasked, masked) => field.onChange(unmasked)}
-                          value={field.value || ''}
-                        />
+                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+
 
                 <FormField
                   control={editForm.control}
