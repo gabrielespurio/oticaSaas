@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
 import { Plus, Eye, FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,12 +97,24 @@ export default function Sales() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Vendas</h1>
-          <Link to="/sales/new">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Venda
-            </Button>
-          </Link>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Venda
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Registrar Nova Venda</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Para criar uma nova venda, vá até o módulo de Orçamentos e converta um orçamento aprovado em venda.
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="flex gap-4">
@@ -246,12 +257,24 @@ export default function Sales() {
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Comece registrando sua primeira venda.
                 </p>
-                <Link to="/sales/new">
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Registrar Venda
-                  </Button>
-                </Link>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Registrar Venda
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Registrar Nova Venda</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-muted-foreground">
+                        Para criar uma nova venda, vá até o módulo de Orçamentos e converta um orçamento aprovado em venda.
+                      </p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
           )}
