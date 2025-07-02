@@ -25,11 +25,20 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // Form schemas
-const customerFormSchema = insertCustomerSchema.extend({
-  cpf: z.string().min(11, "CPF deve ter 11 dígitos").max(14, "CPF inválido"),
+const customerFormSchema = z.object({
+  fullName: z.string().min(1, "Nome é obrigatório"),
+  cpf: z.string().min(11, "CPF deve ter 11 dígitos").max(14, "CPF inválido").optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos").optional().or(z.literal("")),
+  birthDate: z.string().optional(),
+  street: z.string().optional().or(z.literal("")),
+  number: z.string().optional().or(z.literal("")),
+  complement: z.string().optional().or(z.literal("")),
+  neighborhood: z.string().optional().or(z.literal("")),
+  city: z.string().optional().or(z.literal("")),
+  state: z.string().optional().or(z.literal("")),
   zipCode: z.string().min(8, "CEP deve ter 8 dígitos").optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
 });
 
 const prescriptionFormSchema = z.object({
@@ -193,6 +202,20 @@ export default function Customers() {
 
   const editForm = useForm<z.infer<typeof customerFormSchema>>({
     resolver: zodResolver(customerFormSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      phone: "",
+      cpf: "",
+      street: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      notes: "",
+    },
   });
 
   const prescriptionForm = useForm<z.infer<typeof prescriptionFormSchema>>({
@@ -657,7 +680,7 @@ export default function Customers() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {customerDetails.purchaseHistory?.map((sale) => (
+                      {customerDetails.purchaseHistory?.map((sale: any) => (
                         <Card key={sale.id}>
                           <CardHeader className="pb-2">
                             <div className="flex justify-between items-center">
@@ -674,7 +697,7 @@ export default function Customers() {
                           </CardHeader>
                           <CardContent>
                             <div className="space-y-2">
-                              {sale.items.map((item) => (
+                              {sale.items.map((item: any) => (
                                 <div key={item.id} className="flex justify-between text-sm">
                                   <span>{item.product.name} (x{item.quantity})</span>
                                   <span>{formatCurrency(item.totalPrice)}</span>
@@ -711,7 +734,7 @@ export default function Customers() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {customerDetails.prescriptions?.map((prescription) => (
+                      {customerDetails.prescriptions?.map((prescription: any) => (
                         <Card key={prescription.id}>
                           <CardHeader className="pb-2">
                             <div className="flex justify-between items-center">
