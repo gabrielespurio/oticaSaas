@@ -111,15 +111,18 @@ export default function Customers() {
 
   // Mutations
   const createCustomerMutation = useMutation({
-    mutationFn: (data: z.infer<typeof customerFormSchema>) => 
-      apiRequest("/api/customers", { method: "POST", body: JSON.stringify(data) }),
+    mutationFn: (data: z.infer<typeof customerFormSchema>) => {
+      console.log('Frontend sending data:', data);
+      return apiRequest("/api/customers", { method: "POST", body: JSON.stringify(data) });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       setIsAddDialogOpen(false);
       customerForm.reset();
       toast({ title: "Cliente criado com sucesso!" });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Frontend error:', error);
       toast({ title: "Erro ao criar cliente", variant: "destructive" });
     },
   });
