@@ -462,48 +462,54 @@ export default function Customers() {
                     )}
                   />
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={customerForm.control}
-                      name="street"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Logradouro</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-6">
+                      <FormField
+                        control={customerForm.control}
+                        name="street"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Logradouro</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     
-                    <FormField
-                      control={customerForm.control}
-                      name="number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Número</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="md:col-span-2">
+                      <FormField
+                        control={customerForm.control}
+                        name="number"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Número</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     
-                    <FormField
-                      control={customerForm.control}
-                      name="complement"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Complemento</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="md:col-span-4">
+                      <FormField
+                        control={customerForm.control}
+                        name="complement"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Complemento</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -954,48 +960,54 @@ export default function Customers() {
                   )}
                 />
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="street"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Logradouro</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="md:col-span-6">
+                    <FormField
+                      control={editForm.control}
+                      name="street"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Logradouro</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   
-                  <FormField
-                    control={editForm.control}
-                    name="number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="md:col-span-2">
+                    <FormField
+                      control={editForm.control}
+                      name="number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   
-                  <FormField
-                    control={editForm.control}
-                    name="complement"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Complemento</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="md:col-span-4">
+                    <FormField
+                      control={editForm.control}
+                      name="complement"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Complemento</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
