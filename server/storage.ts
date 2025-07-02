@@ -68,7 +68,7 @@ export interface IStorage {
   getSalesByDateRange(startDate: Date, endDate: Date): Promise<Sale[]>;
 
   // Quotes
-  getQuotes(limit?: number, offset?: number): Promise<Quote[]>;
+  getQuotes(limit?: number, offset?: number): Promise<(Quote & { customer: Customer })[]>;
   getQuote(id: number): Promise<Quote | undefined>;
   getQuoteWithItems(id: number): Promise<(Quote & { items: (QuoteItem & { product: Product })[] }) | undefined>;
   createQuote(quote: InsertQuote, items: InsertQuoteItem[]): Promise<Quote>;
@@ -427,8 +427,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Quotes
-  async getQuotes(limit = 50, offset = 0): Promise<Quote[]> {
-    return await db.select().from(quotes).limit(limit).offset(offset).orderBy(desc(quotes.createdAt));
+  async getQuotes(limit = 50, offset = 0): Promise<(Quote & { customer: Customer })[]> {
+    return await db.select({
+      id: quotes.id,
+      customerId: quotes.customerId,
+      userId: quotes.userId,
+      quoteNumber: quotes.quoteNumber,
+      totalAmount: quotes.totalAmount,
+      discountAmount: quotes.discountAmount,
+      finalAmount: quotes.finalAmount,
+      status: quotes.status,
+      validUntil: quotes.validUntil,
+      notes: quotes.notes,
+      createdAt: quotes.createdAt,
+      customer: customers,
+    })
+      .from(quotes)
+      .innerJoin(customers, eq(quotes.customerId, customers.id))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(desc(quotes.createdAt));
   }
 
   async getQuote(id: number): Promise<Quote | undefined> {
