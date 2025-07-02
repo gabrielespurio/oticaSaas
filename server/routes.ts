@@ -3,7 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, insertPrescriptionSchema, insertAppointmentSchema, insertFinancialAccountSchema } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, insertPrescriptionSchema, insertPrescriptionFileSchema, insertAppointmentSchema, insertFinancialAccountSchema } from "@shared/schema";
 import { z } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -209,6 +212,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Customer purchase history
+  app.get("/api/customers/:id/purchase-history", authenticateToken, async (req, res) => {
+    try {
+      const customerId = Number(req.params.id);
+      const purchases = await storage.getCustomerPurchaseHistory(customerId);
+      res.json(purchases);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Customer prescriptions
+  app.get("/api/customers/:id/prescriptions", authenticateToken, async (req, res) => {
+    try {
+      const customerId = Number(req.params.id);
+      const prescriptions = await storage.getPrescriptions(customerId);
+      res.json(prescriptions);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Configure multer for file uploads
+  const uploadsDir = path.join(process.cwd(), 'uploads', 'prescriptions');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const storage_multer = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+
+  const upload = multer({
+    storage: storage_multer,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG and PDF files are allowed.'));
+      }
+    }
+  });
+
+  // Prescription routes
+  app.get("/api/prescriptions/:id", authenticateToken, async (req, res) => {
+    try {
+      const prescription = await storage.getPrescriptionWithFiles(Number(req.params.id));
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+      res.json(prescription);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/prescriptions", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertPrescriptionSchema.parse(req.body);
+      const prescription = await storage.createPrescription(validatedData);
+      res.status(201).json(prescription);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/prescriptions/:id", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertPrescriptionSchema.partial().parse(req.body);
+      const prescription = await storage.updatePrescription(Number(req.params.id), validatedData);
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+      res.json(prescription);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Prescription file upload
+  app.post("/api/prescriptions/:id/files", authenticateToken, upload.array('files', 5), async (req, res) => {
+    try {
+      const prescriptionId = Number(req.params.id);
+      const files = req.files as Express.Multer.File[];
+      
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const savedFiles = [];
+      for (const file of files) {
+        const fileData = {
+          prescriptionId,
+          filename: file.filename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          path: file.path,
+        };
+
+        const savedFile = await storage.createPrescriptionFile(fileData);
+        savedFiles.push(savedFile);
+      }
+
+      res.status(201).json(savedFiles);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Serve prescription files
+  app.get("/api/prescriptions/files/:filename", authenticateToken, (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const filePath = path.join(uploadsDir, filename);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      res.sendFile(filePath);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Delete prescription file
+  app.delete("/api/prescriptions/files/:id", authenticateToken, async (req, res) => {
+    try {
+      const fileId = Number(req.params.id);
+      const deleted = await storage.deletePrescriptionFile(fileId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
   });

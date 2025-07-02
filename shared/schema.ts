@@ -23,7 +23,10 @@ export const customers = pgTable("customers", {
   phone: text("phone"),
   cpf: text("cpf").unique(),
   birthDate: timestamp("birth_date"),
-  address: text("address"),
+  street: text("street"),
+  number: text("number"),
+  complement: text("complement"),
+  neighborhood: text("neighborhood"),
   city: text("city"),
   state: text("state"),
   zipCode: text("zip_code"),
@@ -164,6 +167,18 @@ export const appointments = pgTable("appointments", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Prescription files table
+export const prescriptionFiles = pgTable("prescription_files", {
+  id: serial("id").primaryKey(),
+  prescriptionId: integer("prescription_id").notNull().references(() => prescriptions.id),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(), // in bytes
+  path: text("path").notNull(),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   sales: many(sales),
@@ -239,10 +254,18 @@ export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
   }),
 }));
 
-export const prescriptionsRelations = relations(prescriptions, ({ one }) => ({
+export const prescriptionsRelations = relations(prescriptions, ({ one, many }) => ({
   customer: one(customers, {
     fields: [prescriptions.customerId],
     references: [customers.id],
+  }),
+  files: many(prescriptionFiles),
+}));
+
+export const prescriptionFilesRelations = relations(prescriptionFiles, ({ one }) => ({
+  prescription: one(prescriptions, {
+    fields: [prescriptionFiles.prescriptionId],
+    references: [prescriptions.id],
   }),
 }));
 
@@ -321,6 +344,11 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({
   createdAt: true,
 });
 
+export const insertPrescriptionFileSchema = createInsertSchema(prescriptionFiles).omit({
+  id: true,
+  uploadedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -354,3 +382,6 @@ export type InsertFinancialAccount = z.infer<typeof insertFinancialAccountSchema
 
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+
+export type PrescriptionFile = typeof prescriptionFiles.$inferSelect;
+export type InsertPrescriptionFile = z.infer<typeof insertPrescriptionFileSchema>;

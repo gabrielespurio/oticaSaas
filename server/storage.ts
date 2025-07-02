@@ -1,10 +1,10 @@
 import {
-  users, customers, products, productCategories, prescriptions,
+  users, customers, products, productCategories, prescriptions, prescriptionFiles,
   sales, saleItems, quotes, quoteItems, financialAccounts, appointments,
   type User, type InsertUser, type Customer, type InsertCustomer,
   type Product, type InsertProduct, type ProductCategory, type InsertProductCategory,
-  type Prescription, type InsertPrescription, type Sale, type InsertSale,
-  type SaleItem, type InsertSaleItem, type Quote, type InsertQuote,
+  type Prescription, type InsertPrescription, type PrescriptionFile, type InsertPrescriptionFile,
+  type Sale, type InsertSale, type SaleItem, type InsertSaleItem, type Quote, type InsertQuote,
   type QuoteItem, type InsertQuoteItem, type FinancialAccount, type InsertFinancialAccount,
   type Appointment, type InsertAppointment
 } from "@shared/schema";
@@ -27,6 +27,7 @@ export interface IStorage {
   createCustomer(customer: InsertCustomer): Promise<Customer>;
   updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer | undefined>;
   searchCustomers(query: string): Promise<Customer[]>;
+  getCustomerPurchaseHistory(customerId: number): Promise<(Sale & { items: (SaleItem & { product: Product })[] })[]>;
 
   // Product Categories
   getProductCategories(): Promise<ProductCategory[]>;
@@ -48,8 +49,14 @@ export interface IStorage {
   // Prescriptions
   getPrescriptions(customerId?: number): Promise<Prescription[]>;
   getPrescription(id: number): Promise<Prescription | undefined>;
+  getPrescriptionWithFiles(id: number): Promise<(Prescription & { files: PrescriptionFile[] }) | undefined>;
   createPrescription(prescription: InsertPrescription): Promise<Prescription>;
   updatePrescription(id: number, prescription: Partial<InsertPrescription>): Promise<Prescription | undefined>;
+  
+  // Prescription Files
+  getPrescriptionFiles(prescriptionId: number): Promise<PrescriptionFile[]>;
+  createPrescriptionFile(file: InsertPrescriptionFile): Promise<PrescriptionFile>;
+  deletePrescriptionFile(id: number): Promise<boolean>;
 
   // Sales
   getSales(limit?: number, offset?: number): Promise<Sale[]>;
@@ -166,6 +173,33 @@ export class DatabaseStorage implements IStorage {
       .limit(20);
   }
 
+  async getCustomerPurchaseHistory(customerId: number): Promise<(Sale & { items: (SaleItem & { product: Product })[] })[]> {
+    const customerSales = await db.select().from(sales)
+      .where(eq(sales.customerId, customerId))
+      .orderBy(desc(sales.saleDate));
+
+    const salesWithItems = await Promise.all(
+      customerSales.map(async (sale) => {
+        const items = await db.select({
+          id: saleItems.id,
+          saleId: saleItems.saleId,
+          productId: saleItems.productId,
+          quantity: saleItems.quantity,
+          unitPrice: saleItems.unitPrice,
+          totalPrice: saleItems.totalPrice,
+          product: products,
+        })
+          .from(saleItems)
+          .innerJoin(products, eq(saleItems.productId, products.id))
+          .where(eq(saleItems.saleId, sale.id));
+
+        return { ...sale, items };
+      })
+    );
+
+    return salesWithItems;
+  }
+
   // Product Categories
   async getProductCategories(): Promise<ProductCategory[]> {
     return await db.select().from(productCategories).orderBy(productCategories.name);
@@ -266,6 +300,14 @@ export class DatabaseStorage implements IStorage {
     return prescription || undefined;
   }
 
+  async getPrescriptionWithFiles(id: number): Promise<(Prescription & { files: PrescriptionFile[] }) | undefined> {
+    const prescription = await this.getPrescription(id);
+    if (!prescription) return undefined;
+    
+    const files = await this.getPrescriptionFiles(id);
+    return { ...prescription, files };
+  }
+
   async createPrescription(insertPrescription: InsertPrescription): Promise<Prescription> {
     const [prescription] = await db.insert(prescriptions).values(insertPrescription).returning();
     return prescription;
@@ -274,6 +316,23 @@ export class DatabaseStorage implements IStorage {
   async updatePrescription(id: number, updateData: Partial<InsertPrescription>): Promise<Prescription | undefined> {
     const [prescription] = await db.update(prescriptions).set(updateData).where(eq(prescriptions.id, id)).returning();
     return prescription || undefined;
+  }
+
+  // Prescription Files
+  async getPrescriptionFiles(prescriptionId: number): Promise<PrescriptionFile[]> {
+    return await db.select().from(prescriptionFiles)
+      .where(eq(prescriptionFiles.prescriptionId, prescriptionId))
+      .orderBy(desc(prescriptionFiles.uploadedAt));
+  }
+
+  async createPrescriptionFile(insertFile: InsertPrescriptionFile): Promise<PrescriptionFile> {
+    const [file] = await db.insert(prescriptionFiles).values(insertFile).returning();
+    return file;
+  }
+
+  async deletePrescriptionFile(id: number): Promise<boolean> {
+    const result = await db.delete(prescriptionFiles).where(eq(prescriptionFiles.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Sales
