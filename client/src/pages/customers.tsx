@@ -112,7 +112,7 @@ export default function Customers() {
   // Mutations
   const createCustomerMutation = useMutation({
     mutationFn: (data: z.infer<typeof customerFormSchema>) => {
-      return apiRequest("/api/customers", { method: "POST", body: JSON.stringify(data) });
+      return apiRequest("POST", "/api/customers", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
@@ -151,7 +151,7 @@ export default function Customers() {
 
   const updateCustomerMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<z.infer<typeof customerFormSchema>> }) =>
-      apiRequest(`/api/customers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+      apiRequest("PUT", `/api/customers/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       setIsEditDialogOpen(false);
@@ -180,7 +180,7 @@ export default function Customers() {
         rightPd: data.rightPd ? parseFloat(data.rightPd) : null,
         leftPd: data.leftPd ? parseFloat(data.leftPd) : null,
       };
-      return apiRequest("/api/prescriptions", { method: "POST", body: JSON.stringify(payload) });
+      return apiRequest("POST", "/api/prescriptions", payload);
     },
     onSuccess: async (prescription) => {
       // Upload files if any
@@ -190,10 +190,7 @@ export default function Customers() {
           formData.append('files', file);
         });
 
-        await apiRequest(`/api/prescriptions/${prescription.id}/files`, {
-          method: "POST",
-          body: formData,
-        });
+        await apiRequest("POST", `/api/prescriptions/${prescription.id}/files`, formData);
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
