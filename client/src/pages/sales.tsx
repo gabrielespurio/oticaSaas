@@ -66,7 +66,7 @@ export default function Sales() {
   };
 
   const filteredSales = sales.filter(sale =>
-    sale.customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (sale.customer?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
     sale.saleNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -144,7 +144,7 @@ export default function Sales() {
                       </Badge>
                     </div>
                     <p className="text-gray-600 dark:text-gray-400">
-                      Cliente: {sale.customer.fullName}
+                      Cliente: {sale.customer?.fullName || "Cliente não identificado"}
                     </p>
                     <p className="text-gray-600 dark:text-gray-400">
                       Data: {format(new Date(sale.saleDate), "dd/MM/yyyy HH:mm", { locale: ptBR })}
@@ -176,9 +176,9 @@ export default function Sales() {
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <h4 className="font-semibold mb-2">Cliente</h4>
-                                <p>{selectedSale.customer.fullName}</p>
-                                <p>{selectedSale.customer.email}</p>
-                                <p>{selectedSale.customer.phone}</p>
+                                <p>{selectedSale.customer?.fullName || "Nome não disponível"}</p>
+                                <p>{selectedSale.customer?.email || "Email não disponível"}</p>
+                                <p>{selectedSale.customer?.phone || "Telefone não disponível"}</p>
                               </div>
                               <div>
                                 <h4 className="font-semibold mb-2">Informações da Venda</h4>
