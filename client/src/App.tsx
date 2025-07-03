@@ -16,6 +16,8 @@ import Appointments from "@/pages/appointments";
 import Prescriptions from "@/pages/prescriptions";
 import Reports from "@/pages/reports";
 import Quotes from "@/pages/quotes";
+import ReceivablesPage from "@/pages/financial/receivables";
+import PayablesPage from "@/pages/financial/payables";
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -56,6 +58,16 @@ function Router() {
       <Route path="/financial">
         <ProtectedRoute>
           <Financial />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/financial/receivables">
+        <ProtectedRoute>
+          <ReceivablesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/financial/payables">
+        <ProtectedRoute>
+          <PayablesPage />
         </ProtectedRoute>
       </Route>
       <Route path="/appointments">

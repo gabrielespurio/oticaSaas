@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { 
@@ -12,7 +13,11 @@ import {
   Glasses,
   Moon,
   Sun,
-  FileEdit
+  FileEdit,
+  ChevronDown,
+  ChevronRight,
+  CreditCard,
+  Receipt
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,7 +28,15 @@ const navigation = [
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Orçamentos", href: "/quotes", icon: FileEdit },
   { name: "Vendas", href: "/sales", icon: ShoppingCart },
-  { name: "Financeiro", href: "/financial", icon: DollarSign },
+  { 
+    name: "Financeiro", 
+    href: "/financial", 
+    icon: DollarSign,
+    subItems: [
+      { name: "Contas a Receber", href: "/financial/receivables", icon: Receipt },
+      { name: "Contas a Pagar", href: "/financial/payables", icon: CreditCard },
+    ]
+  },
   { name: "Agendamentos", href: "/appointments", icon: Calendar },
   { name: "Prescrições", href: "/prescriptions", icon: FileText },
   { name: "Relatórios", href: "/reports", icon: BarChart3 },
@@ -33,9 +46,18 @@ export function Sidebar() {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const toggleExpanded = (itemName: string) => {
+    setExpandedItems(prev => 
+      prev.includes(itemName) 
+        ? prev.filter(name => name !== itemName)
+        : [...prev, itemName]
+    );
   };
 
   return (
@@ -51,23 +73,74 @@ export function Sidebar() {
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-2">
         {navigation.map((item) => {
+          const hasSubItems = item.subItems && item.subItems.length > 0;
+          const isExpanded = expandedItems.includes(item.name);
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           const Icon = item.icon;
           
           return (
-            <Link key={item.name} href={item.href}>
-              <div
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
-                  isActive
-                    ? "text-sidebar-primary bg-sidebar-accent"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                {item.name}
-              </div>
-            </Link>
+            <div key={item.name}>
+              {hasSubItems ? (
+                <div>
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                      isActive
+                        ? "text-sidebar-primary bg-sidebar-accent"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                    onClick={() => toggleExpanded(item.name)}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="flex-1">{item.name}</span>
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="ml-8 mt-1 space-y-1">
+                      {item.subItems.map((subItem) => {
+                        const subIsActive = location === subItem.href;
+                        const SubIcon = subItem.icon;
+                        
+                        return (
+                          <Link key={subItem.name} href={subItem.href}>
+                            <div
+                              className={cn(
+                                "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                                subIsActive
+                                  ? "text-sidebar-primary bg-sidebar-accent"
+                                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                              )}
+                            >
+                              <SubIcon className="w-4 h-4" />
+                              {subItem.name}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link href={item.href}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                      isActive
+                        ? "text-sidebar-primary bg-sidebar-accent"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.name}
+                  </div>
+                </Link>
+              )}
+            </div>
           );
         })}
       </nav>

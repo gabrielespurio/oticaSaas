@@ -770,6 +770,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/financial/accounts/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertFinancialAccountSchema.partial().parse(req.body);
+      const account = await storage.updateFinancialAccount(parseInt(id), validatedData);
+      if (!account) {
+        return res.status(404).json({ message: "Financial account not found" });
+      }
+      res.json(account);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
