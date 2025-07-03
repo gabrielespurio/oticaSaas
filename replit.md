@@ -154,3 +154,5 @@ Changelog:
 - July 03, 2025. Added missing DELETE route for quotes functionality 
 - July 03, 2025. Enhanced quote to sale conversion with payment method selection (PIX, cartão, dinheiro, crediário)
 - July 03, 2025. Integrated automatic accounts receivable creation from sales module with installment support
+- July 03, 2025. Updated payment methods to distinguish between debit and credit cards with automatic installment calculations
+- July 03, 2025. Transformed accounts receivable interface from card format to table format for improved data visualization

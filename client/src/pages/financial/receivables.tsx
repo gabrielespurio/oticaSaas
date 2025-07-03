@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -400,104 +401,138 @@ export default function ReceivablesPage() {
           </Card>
         </div>
 
-        {/* Lista de Contas */}
-        <div className="grid gap-4">
-          {filteredReceivables.map((receivable: any) => (
-            <Card key={receivable.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {receivable.description}
-                      </h3>
-                      <Badge className={getStatusColor(receivable.status)}>
-                        {getStatusText(receivable.status)}
-                      </Badge>
-                      {isOverdue(receivable.dueDate, receivable.status) && (
-                        <Badge variant="destructive">Vencido</Badge>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                      <p><strong>Valor:</strong> R$ {parseFloat(receivable.amount).toFixed(2)}</p>
-                      <p><strong>Vencimento:</strong> {format(new Date(receivable.dueDate), "dd/MM/yyyy", { locale: ptBR })}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditReceivable(receivable)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedReceivable(receivable)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Detalhes da Conta a Receber</DialogTitle>
-                        </DialogHeader>
-                        {selectedReceivable && (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <h4 className="font-semibold mb-2">Informações da Conta</h4>
-                                <p><strong>Descrição:</strong> {selectedReceivable.description}</p>
-                                <p><strong>Status:</strong> {getStatusText(selectedReceivable.status)}</p>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold mb-2">Detalhes Financeiros</h4>
-                                <p><strong>Valor:</strong> R$ {parseFloat(selectedReceivable.amount).toFixed(2)}</p>
-                                <p><strong>Vencimento:</strong> {format(new Date(selectedReceivable.dueDate), "dd/MM/yyyy", { locale: ptBR })}</p>
-                              </div>
-                            </div>
+        {/* Tabela de Contas */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Contas a Receber</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {filteredReceivables.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredReceivables.map((receivable: any) => {
+                    const customer = customers.find(c => c.id === receivable.customerId);
+                    const isDue = isOverdue(receivable.dueDate, receivable.status);
+                    
+                    return (
+                      <TableRow key={receivable.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <TableCell>
+                          <div className="font-medium">{receivable.description}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {customer?.fullName || 'Cliente não encontrado'}
                           </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {filteredReceivables.length === 0 && !searchTerm && filterStatus === "all" && (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Nenhuma conta a receber
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Comece criando sua primeira conta a receber.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {filteredReceivables.length === 0 && (searchTerm || filterStatus !== "all") && (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Search className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Nenhuma conta encontrada
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Tente ajustar os filtros de busca.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-mono font-medium">
+                            R$ {parseFloat(receivable.amount).toFixed(2)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className={`text-sm ${isDue ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}>
+                            {format(new Date(receivable.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Badge className={getStatusColor(receivable.status)}>
+                              {getStatusText(receivable.status)}
+                            </Badge>
+                            {isDue && (
+                              <Badge variant="destructive">Vencido</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditReceivable(receivable)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedReceivable(receivable)}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle>Detalhes da Conta a Receber</DialogTitle>
+                                </DialogHeader>
+                                {selectedReceivable && (
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <h4 className="font-semibold mb-2">Informações da Conta</h4>
+                                        <p><strong>Descrição:</strong> {selectedReceivable.description}</p>
+                                        <p><strong>Status:</strong> {getStatusText(selectedReceivable.status)}</p>
+                                        <p><strong>Cliente:</strong> {customers.find(c => c.id === selectedReceivable.customerId)?.fullName}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold mb-2">Detalhes Financeiros</h4>
+                                        <p><strong>Valor:</strong> R$ {parseFloat(selectedReceivable.amount).toFixed(2)}</p>
+                                        <p><strong>Vencimento:</strong> {format(new Date(selectedReceivable.dueDate), "dd/MM/yyyy", { locale: ptBR })}</p>
+                                        {selectedReceivable.saleId && (
+                                          <p><strong>Venda:</strong> #{sales.find(s => s.id === selectedReceivable.saleId)?.saleNumber}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="p-12 text-center">
+                {!searchTerm && filterStatus === "all" ? (
+                  <>
+                    <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Nenhuma conta a receber
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Comece criando sua primeira conta a receber.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Nenhuma conta encontrada
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Tente ajustar os filtros de busca.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Edit Receivable Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
