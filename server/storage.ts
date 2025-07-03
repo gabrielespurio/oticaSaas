@@ -461,11 +461,11 @@ export class DatabaseStorage implements IStorage {
             description: `Parcela ${i}/${installmentCount} - Venda #${saleNumber}`,
             amount: installmentAmount.toFixed(2),
             dueDate,
-            status: 'pending',
+            status: 'pending', // A receber - parcela do crediário
           });
         }
-      } else if (sale.paymentMethod === 'cartao' && sale.installments && sale.installments > 1) {
-        // For card with installments
+      } else if ((sale.paymentMethod === 'cartao' || sale.paymentMethod === 'card') && sale.installments && sale.installments > 1) {
+        // For card with installments - only create receivables if payment is not immediate
         const installmentCount = sale.installments;
         const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
         const today = new Date();
@@ -481,25 +481,12 @@ export class DatabaseStorage implements IStorage {
             description: `Parcela ${i}/${installmentCount} (Cartão) - Venda #${saleNumber}`,
             amount: installmentAmount.toFixed(2),
             dueDate,
-            status: 'pending',
+            status: 'pending', // A receber - parcela do cartão
           });
         }
-      } else if (sale.paymentMethod !== 'dinheiro' && sale.paymentMethod !== 'pix') {
-        // For other payment methods that are not cash or PIX, create a single receivable
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 30); // Default 30 days
-        
-        await tx.insert(financialAccounts).values({
-          customerId: sale.customerId,
-          saleId: sale.id,
-          type: 'receivable',
-          description: `Venda #${saleNumber} - ${sale.paymentMethod}`,
-          amount: sale.finalAmount,
-          dueDate,
-          status: 'pending',
-        });
       }
-      // For cash and PIX, no receivable is created as they are immediate payments
+      // Note: For dinheiro, pix, and cartao à vista (1x), no receivables are created
+      // as these are immediate payments that don't generate accounts receivable
 
       return sale;
     });
