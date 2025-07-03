@@ -77,7 +77,7 @@ export interface IStorage {
   convertQuoteToSale(quoteId: number, paymentInfo?: { paymentMethod: string; paymentStatus: string; installments?: number }): Promise<Sale | undefined>;
 
   // Financial Accounts
-  getFinancialAccounts(type?: string): Promise<FinancialAccount[]>;
+  getFinancialAccounts(type?: string): Promise<any[]>;
   getFinancialAccount(id: number): Promise<FinancialAccount | undefined>;
   getOverdueAccounts(): Promise<FinancialAccount[]>;
   createFinancialAccount(account: InsertFinancialAccount): Promise<FinancialAccount>;
@@ -667,7 +667,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Financial Accounts
-  async getFinancialAccounts(type?: string): Promise<FinancialAccount[]> {
+  async getFinancialAccounts(type?: string): Promise<any[]> {
     const query = db.select({
       id: financialAccounts.id,
       customerId: financialAccounts.customerId,
@@ -679,8 +679,8 @@ export class DatabaseStorage implements IStorage {
       paidDate: financialAccounts.paidDate,
       status: financialAccounts.status,
       createdAt: financialAccounts.createdAt,
-      customer: customers,
-      sale: sales,
+      customerName: customers.fullName,
+      saleNumber: sales.saleNumber,
     })
       .from(financialAccounts)
       .leftJoin(customers, eq(financialAccounts.customerId, customers.id))
