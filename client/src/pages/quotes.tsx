@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Eye, FileText, ShoppingCart, Trash2, Search, Minus } from "lucide-react";
+import { Plus, Eye, FileText, ShoppingCart, Trash2, Search, Minus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -171,6 +171,43 @@ export default function QuotesPage() {
       toast({
         title: "Erro",
         description: "Erro ao converter orçamento para venda.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const downloadPDFMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/quotes/${id}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao gerar PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orcamento-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "PDF gerado",
+        description: "O PDF do orçamento foi baixado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar PDF do orçamento.",
         variant: "destructive",
       });
     },
@@ -572,8 +609,14 @@ export default function QuotesPage() {
                       </DialogContent>
                     </Dialog>
 
-                    <Button variant="outline" size="sm">
-                      <FileText className="w-4 h-4" />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => downloadPDFMutation.mutate(quote.id)}
+                      disabled={downloadPDFMutation.isPending}
+                      title="Baixar PDF"
+                    >
+                      <Download className="w-4 h-4" />
                     </Button>
 
                     {quote.status === "pending" && (

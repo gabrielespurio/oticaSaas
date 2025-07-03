@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import { insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, insertQuoteItemSchema, insertPrescriptionSchema, insertPrescriptionFileSchema, insertAppointmentSchema, insertFinancialAccountSchema } from "@shared/schema";
 import { z } from "zod";
+import { PDFService } from "./pdf-service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -603,6 +604,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(sale);
     } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/quotes/:id/pdf", authenticateToken, async (req, res) => {
+    try {
+      const quote = await storage.getQuoteWithItems(Number(req.params.id));
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      const pdfBuffer = PDFService.generateQuotePDF({
+        quote,
+        items: quote.items
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="orcamento-${quote.quoteNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
