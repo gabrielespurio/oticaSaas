@@ -441,52 +441,69 @@ export class DatabaseStorage implements IStorage {
           .where(eq(products.id, item.productId));
       }
 
-      // Create financial account entry based on payment method
-      const saleNumber = sale.id.toString().padStart(6, '0');
+      // Create financial account entry based on payment method and payment status
+      const saleNumber = sale.saleNumber || sale.id.toString().padStart(6, '0');
       
-      if (sale.paymentMethod === 'crediario') {
-        // For crediário, create installments based on installments field
-        const installmentCount = sale.installments || 1;
-        const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
-        const today = new Date();
-        
-        for (let i = 1; i <= installmentCount; i++) {
+      // If payment is not completed, create receivable accounts
+      if (sale.paymentStatus === 'pending') {
+        if (sale.paymentMethod === 'crediario') {
+          // For crediário, create installments based on installments field
+          const installmentCount = sale.installments || 1;
+          const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
+          const today = new Date();
+          
+          for (let i = 1; i <= installmentCount; i++) {
+            const dueDate = new Date(today);
+            dueDate.setMonth(dueDate.getMonth() + i);
+            
+            await tx.insert(financialAccounts).values({
+              customerId: sale.customerId,
+              saleId: sale.id,
+              type: 'receivable',
+              description: `Parcela ${i}/${installmentCount} - Venda #${saleNumber}`,
+              amount: installmentAmount.toFixed(2),
+              dueDate,
+              status: 'pending', // A receber - parcela do crediário
+            });
+          }
+        } else if ((sale.paymentMethod === 'cartao_credito' || sale.paymentMethod === 'cartao' || sale.paymentMethod === 'card') && sale.installments && sale.installments > 1) {
+          // For card with installments - create receivables for each installment
+          const installmentCount = sale.installments;
+          const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
+          const today = new Date();
+          
+          for (let i = 1; i <= installmentCount; i++) {
+            const dueDate = new Date(today);
+            dueDate.setMonth(dueDate.getMonth() + i);
+            
+            await tx.insert(financialAccounts).values({
+              customerId: sale.customerId,
+              saleId: sale.id,
+              type: 'receivable',
+              description: `Parcela ${i}/${installmentCount} (Cartão de Crédito) - Venda #${saleNumber}`,
+              amount: installmentAmount.toFixed(2),
+              dueDate,
+              status: 'pending', // A receber - parcela do cartão
+            });
+          }
+        } else {
+          // For any other payment method with pending status, create a single receivable
+          const today = new Date();
           const dueDate = new Date(today);
-          dueDate.setMonth(dueDate.getMonth() + i);
+          dueDate.setDate(dueDate.getDate() + 30); // Default: 30 days to pay
           
           await tx.insert(financialAccounts).values({
             customerId: sale.customerId,
             saleId: sale.id,
             type: 'receivable',
-            description: `Parcela ${i}/${installmentCount} - Venda #${saleNumber}`,
-            amount: installmentAmount.toFixed(2),
+            description: `Venda #${saleNumber} - ${sale.paymentMethod === 'cash' ? 'Dinheiro' : sale.paymentMethod === 'pix' ? 'PIX' : 'Pagamento'} Pendente`,
+            amount: sale.finalAmount,
             dueDate,
-            status: 'pending', // A receber - parcela do crediário
-          });
-        }
-      } else if ((sale.paymentMethod === 'cartao_credito' || sale.paymentMethod === 'cartao' || sale.paymentMethod === 'card') && sale.installments && sale.installments > 1) {
-        // For card with installments - only create receivables if payment is not immediate
-        const installmentCount = sale.installments;
-        const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
-        const today = new Date();
-        
-        for (let i = 1; i <= installmentCount; i++) {
-          const dueDate = new Date(today);
-          dueDate.setMonth(dueDate.getMonth() + i);
-          
-          await tx.insert(financialAccounts).values({
-            customerId: sale.customerId,
-            saleId: sale.id,
-            type: 'receivable',
-            description: `Parcela ${i}/${installmentCount} (Cartão de Crédito) - Venda #${saleNumber}`,
-            amount: installmentAmount.toFixed(2),
-            dueDate,
-            status: 'pending', // A receber - parcela do cartão
+            status: 'pending', // A receber
           });
         }
       }
-      // Note: For dinheiro, pix, and cartao à vista (1x), no receivables are created
-      // as these are immediate payments that don't generate accounts receivable
+      // Note: For completed payments, no receivables are created as payment is already received
 
       return sale;
     });
