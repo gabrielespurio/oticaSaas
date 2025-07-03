@@ -73,6 +73,7 @@ export interface IStorage {
   getQuoteWithItems(id: number): Promise<(Quote & { customer: Customer; items: (QuoteItem & { product: Product })[] }) | undefined>;
   createQuote(quote: InsertQuote, items: InsertQuoteItem[]): Promise<Quote>;
   updateQuote(id: number, quote: Partial<InsertQuote>): Promise<Quote | undefined>;
+  deleteQuote(id: number): Promise<boolean>;
   convertQuoteToSale(quoteId: number): Promise<Sale | undefined>;
 
   // Financial Accounts
@@ -505,6 +506,23 @@ export class DatabaseStorage implements IStorage {
   async updateQuote(id: number, updateData: Partial<InsertQuote>): Promise<Quote | undefined> {
     const [quote] = await db.update(quotes).set(updateData).where(eq(quotes.id, id)).returning();
     return quote || undefined;
+  }
+
+  async deleteQuote(id: number): Promise<boolean> {
+    return await db.transaction(async (tx) => {
+      try {
+        // First delete all quote items
+        await tx.delete(quoteItems).where(eq(quoteItems.quoteId, id));
+        
+        // Then delete the quote
+        const result = await tx.delete(quotes).where(eq(quotes.id, id));
+        
+        return result.rowCount ? result.rowCount > 0 : false;
+      } catch (error) {
+        console.error("Error deleting quote:", error);
+        return false;
+      }
+    });
   }
 
   async convertQuoteToSale(quoteId: number): Promise<Sale | undefined> {

@@ -608,6 +608,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/quotes/:id", authenticateToken, async (req, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      const quote = await storage.getQuote(quoteId);
+      
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      const success = await storage.deleteQuote(quoteId);
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete quote" });
+      }
+
+      res.json({ message: "Quote deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting quote:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/quotes/:id/pdf", authenticateToken, async (req, res) => {
     try {
       const quote = await storage.getQuoteWithItems(Number(req.params.id));
