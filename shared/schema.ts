@@ -96,8 +96,9 @@ export const sales = pgTable("sales", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0"),
   finalAmount: decimal("final_amount", { precision: 10, scale: 2 }).notNull(),
-  paymentMethod: text("payment_method").notNull(), // pix, card, cash, installment
+  paymentMethod: text("payment_method").notNull(), // pix, cartao, dinheiro, crediario
   paymentStatus: text("payment_status").notNull().default("pending"), // pending, paid, partial
+  installments: integer("installments").default(1), // Number of installments for crediario/cartao
   status: text("status").notNull().default("active"), // active, cancelled, returned
   saleDate: timestamp("sale_date").notNull().defaultNow(),
   notes: text("notes"),
@@ -361,7 +362,6 @@ export const insertQuoteSchema = createInsertSchema(quotes).omit({
   createdAt: true,
 }).extend({
   validUntil: z.string().transform((val) => new Date(val)),
-  finalAmount: z.string().optional(),
 });
 
 export const insertQuoteItemSchema = createInsertSchema(quoteItems).omit({

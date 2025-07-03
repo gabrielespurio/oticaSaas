@@ -429,7 +429,7 @@ export class DatabaseStorage implements IStorage {
 
   async createSale(insertSale: InsertSale, items: InsertSaleItem[]): Promise<Sale> {
     return await db.transaction(async (tx) => {
-      const [sale] = await tx.insert(sales).values(insertSale).returning();
+      const [sale] = await tx.insert(sales).values([insertSale]).returning();
       
       const saleItemsWithSaleId = items.map(item => ({ ...item, saleId: sale.id }));
       await tx.insert(saleItems).values(saleItemsWithSaleId);
@@ -440,6 +440,66 @@ export class DatabaseStorage implements IStorage {
           .set({ stockQuantity: sql`${products.stockQuantity} - ${item.quantity}` })
           .where(eq(products.id, item.productId));
       }
+
+      // Create financial account entry based on payment method
+      const saleNumber = sale.id.toString().padStart(6, '0');
+      
+      if (sale.paymentMethod === 'crediario') {
+        // For crediário, create installments based on installments field
+        const installmentCount = sale.installments || 1;
+        const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
+        const today = new Date();
+        
+        for (let i = 1; i <= installmentCount; i++) {
+          const dueDate = new Date(today);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          
+          await tx.insert(financialAccounts).values({
+            customerId: sale.customerId,
+            saleId: sale.id,
+            type: 'receivable',
+            description: `Parcela ${i}/${installmentCount} - Venda #${saleNumber}`,
+            amount: installmentAmount.toFixed(2),
+            dueDate,
+            status: 'pending',
+          });
+        }
+      } else if (sale.paymentMethod === 'cartao' && sale.installments && sale.installments > 1) {
+        // For card with installments
+        const installmentCount = sale.installments;
+        const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
+        const today = new Date();
+        
+        for (let i = 1; i <= installmentCount; i++) {
+          const dueDate = new Date(today);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          
+          await tx.insert(financialAccounts).values({
+            customerId: sale.customerId,
+            saleId: sale.id,
+            type: 'receivable',
+            description: `Parcela ${i}/${installmentCount} (Cartão) - Venda #${saleNumber}`,
+            amount: installmentAmount.toFixed(2),
+            dueDate,
+            status: 'pending',
+          });
+        }
+      } else if (sale.paymentMethod !== 'dinheiro' && sale.paymentMethod !== 'pix') {
+        // For other payment methods that are not cash or PIX, create a single receivable
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30); // Default 30 days
+        
+        await tx.insert(financialAccounts).values({
+          customerId: sale.customerId,
+          saleId: sale.id,
+          type: 'receivable',
+          description: `Venda #${saleNumber} - ${sale.paymentMethod}`,
+          amount: sale.finalAmount,
+          dueDate,
+          status: 'pending',
+        });
+      }
+      // For cash and PIX, no receivable is created as they are immediate payments
 
       return sale;
     });
@@ -523,7 +583,7 @@ export class DatabaseStorage implements IStorage {
 
   async createQuote(insertQuote: InsertQuote, items: InsertQuoteItem[]): Promise<Quote> {
     return await db.transaction(async (tx) => {
-      const [quote] = await tx.insert(quotes).values(insertQuote).returning();
+      const [quote] = await tx.insert(quotes).values([insertQuote]).returning();
       
       const quoteItemsWithQuoteId = items.map(item => ({ ...item, quoteId: quote.id }));
       await tx.insert(quoteItems).values(quoteItemsWithQuoteId);
@@ -568,6 +628,7 @@ export class DatabaseStorage implements IStorage {
       finalAmount: quote.finalAmount,
       paymentMethod: paymentInfo?.paymentMethod || 'pending',
       paymentStatus: paymentInfo?.paymentStatus || 'pending',
+      installments: paymentInfo?.installments || 1,
     };
 
     const saleItems: InsertSaleItem[] = quote.items.map(item => ({
@@ -607,7 +668,24 @@ export class DatabaseStorage implements IStorage {
 
   // Financial Accounts
   async getFinancialAccounts(type?: string): Promise<FinancialAccount[]> {
-    const query = db.select().from(financialAccounts);
+    const query = db.select({
+      id: financialAccounts.id,
+      customerId: financialAccounts.customerId,
+      saleId: financialAccounts.saleId,
+      type: financialAccounts.type,
+      description: financialAccounts.description,
+      amount: financialAccounts.amount,
+      dueDate: financialAccounts.dueDate,
+      paidDate: financialAccounts.paidDate,
+      status: financialAccounts.status,
+      createdAt: financialAccounts.createdAt,
+      customer: customers,
+      sale: sales,
+    })
+      .from(financialAccounts)
+      .leftJoin(customers, eq(financialAccounts.customerId, customers.id))
+      .leftJoin(sales, eq(financialAccounts.saleId, sales.id));
+      
     if (type) {
       return await query.where(eq(financialAccounts.type, type)).orderBy(financialAccounts.dueDate);
     }

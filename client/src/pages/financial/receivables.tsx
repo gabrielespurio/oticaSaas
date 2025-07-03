@@ -42,7 +42,7 @@ export default function ReceivablesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: receivables = [], isLoading } = useQuery<FinancialAccount[]>({
+  const { data: receivables = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/financial/accounts"],
     select: (data: any[]) => data.filter((account: any) => account.type === "receivable"),
   });
