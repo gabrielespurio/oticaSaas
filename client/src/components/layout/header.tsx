@@ -9,10 +9,10 @@ interface HeaderProps {
 
 export function Header({ title, subtitle }: HeaderProps) {
   return (
-    <header className="bg-background border-b border-border px-6 py-4">
+    <header className="bg-background border-b border-border px-6 py-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
           {subtitle && (
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           )}
