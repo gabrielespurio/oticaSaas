@@ -1,0 +1,1 @@
+{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTE1Nzk3NDIsImV4cCI6MTc1MTY2NjE0Mn0.FpWgGBsXMVmgDoVRC4HSOMtyXXXD2gfWA5jGF5QJ234","user":{"id":1,"username":"admin","email":"admin@oticamanager.com","fullName":"Administrador","role":"admin"}}
