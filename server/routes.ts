@@ -615,7 +615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Quote not found" });
       }
 
-      const pdfBuffer = PDFService.generateQuotePDF({
+      const pdfBuffer = await PDFService.generateQuotePDF({
         quote,
         items: quote.items
       });
