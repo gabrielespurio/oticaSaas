@@ -63,7 +63,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo and Brand */}
-      <div className="flex items-center gap-3 p-6 border-b border-sidebar-border">
+      <div className="flex items-center gap-3 p-6">
         <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
           <Glasses className="w-4 h-4 text-sidebar-primary-foreground" />
         </div>
