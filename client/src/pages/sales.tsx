@@ -222,6 +222,13 @@ export default function Sales() {
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditSale(sale)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
@@ -290,21 +297,9 @@ export default function Sales() {
                             </div>
                           </div>
                         )}
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => selectedSale && handleEditSale(selectedSale)}
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Editar Venda
-                          </Button>
-                        </DialogFooter>
+
                       </DialogContent>
                     </Dialog>
-
-                    <Button variant="outline" size="sm">
-                      <FileText className="w-4 h-4" />
-                    </Button>
                   </div>
                 </div>
               </CardContent>

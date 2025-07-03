@@ -59,7 +59,7 @@ export interface IStorage {
   deletePrescriptionFile(id: number): Promise<boolean>;
 
   // Sales
-  getSales(limit?: number, offset?: number): Promise<Sale[]>;
+  getSales(limit?: number, offset?: number): Promise<(Sale & { customer: Customer; items: (SaleItem & { product: Product })[] })[]>;
   getSale(id: number): Promise<Sale | undefined>;
   getSaleWithItems(id: number): Promise<(Sale & { items: (SaleItem & { product: Product })[] }) | undefined>;
   getRecentSales(limit?: number): Promise<(Sale & { customer: Customer; items: (SaleItem & { product: Product })[] })[]>;
@@ -337,8 +337,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Sales
-  async getSales(limit = 50, offset = 0): Promise<Sale[]> {
-    return await db.select().from(sales).limit(limit).offset(offset).orderBy(desc(sales.saleDate));
+  async getSales(limit = 50, offset = 0): Promise<(Sale & { customer: Customer; items: (SaleItem & { product: Product })[] })[]> {
+    const salesData = await db.select({
+      sale: sales,
+      customer: customers,
+    })
+      .from(sales)
+      .innerJoin(customers, eq(sales.customerId, customers.id))
+      .orderBy(desc(sales.saleDate))
+      .limit(limit)
+      .offset(offset);
+
+    const salesWithItems = await Promise.all(
+      salesData.map(async ({ sale, customer }) => {
+        const items = await db.select({
+          id: saleItems.id,
+          saleId: saleItems.saleId,
+          productId: saleItems.productId,
+          quantity: saleItems.quantity,
+          unitPrice: saleItems.unitPrice,
+          totalPrice: saleItems.totalPrice,
+          product: products,
+        })
+          .from(saleItems)
+          .innerJoin(products, eq(saleItems.productId, products.id))
+          .where(eq(saleItems.saleId, sale.id));
+
+        return { ...sale, customer, items };
+      })
+    );
+
+    return salesWithItems;
   }
 
   async getSale(id: number): Promise<Sale | undefined> {
