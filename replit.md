@@ -149,3 +149,7 @@ Preferred communication style: Simple, everyday language.
 
 Changelog:
 - July 01, 2025. Initial setup
+- July 03, 2025. Migration from Replit Agent to Replit environment completed
+- July 03, 2025. Fixed sales module error with null checks for customer properties
+- July 03, 2025. Added missing DELETE route for quotes functionality 
+- July 03, 2025. Enhanced quote to sale conversion with payment method selection (PIX, cartão, dinheiro, crediário)

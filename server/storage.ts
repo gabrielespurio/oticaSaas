@@ -74,7 +74,7 @@ export interface IStorage {
   createQuote(quote: InsertQuote, items: InsertQuoteItem[]): Promise<Quote>;
   updateQuote(id: number, quote: Partial<InsertQuote>): Promise<Quote | undefined>;
   deleteQuote(id: number): Promise<boolean>;
-  convertQuoteToSale(quoteId: number): Promise<Sale | undefined>;
+  convertQuoteToSale(quoteId: number, paymentInfo?: { paymentMethod: string; paymentStatus: string; installments?: number }): Promise<Sale | undefined>;
 
   // Financial Accounts
   getFinancialAccounts(type?: string): Promise<FinancialAccount[]>;
@@ -525,7 +525,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async convertQuoteToSale(quoteId: number): Promise<Sale | undefined> {
+  async convertQuoteToSale(quoteId: number, paymentInfo?: { paymentMethod: string; paymentStatus: string; installments?: number }): Promise<Sale | undefined> {
     const quote = await this.getQuoteWithItems(quoteId);
     if (!quote) return undefined;
 
@@ -537,8 +537,8 @@ export class DatabaseStorage implements IStorage {
       totalAmount: quote.totalAmount,
       discountAmount: quote.discountAmount,
       finalAmount: quote.finalAmount,
-      paymentMethod: 'pending',
-      paymentStatus: 'pending',
+      paymentMethod: paymentInfo?.paymentMethod || 'pending',
+      paymentStatus: paymentInfo?.paymentStatus || 'pending',
     };
 
     const saleItems: InsertSaleItem[] = quote.items.map(item => ({
@@ -551,6 +551,27 @@ export class DatabaseStorage implements IStorage {
 
     const sale = await this.createSale(insertSale, saleItems);
     await this.updateQuote(quoteId, { status: 'converted' });
+
+    // Create financial accounts if payment is in installments or crediário
+    if (paymentInfo?.paymentMethod === 'installment' && paymentInfo.installments && paymentInfo.installments > 1) {
+      const installmentAmount = parseFloat(quote.finalAmount) / paymentInfo.installments;
+      const today = new Date();
+      
+      for (let i = 1; i <= paymentInfo.installments; i++) {
+        const dueDate = new Date(today);
+        dueDate.setMonth(dueDate.getMonth() + i);
+        
+        await this.createFinancialAccount({
+          customerId: quote.customerId,
+          type: 'receivable',
+          description: `Parcela ${i}/${paymentInfo.installments} - Venda #${saleNumber}`,
+          amount: installmentAmount.toFixed(2),
+          dueDate,
+          status: 'pending',
+          saleId: sale.id,
+        });
+      }
+    }
 
     return sale;
   }

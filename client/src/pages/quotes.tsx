@@ -34,10 +34,23 @@ const quoteFormSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Schema para conversão em venda
+const saleConversionSchema = z.object({
+  paymentMethod: z.string().min(1, "Forma de pagamento é obrigatória"),
+  paymentStatus: z.string().default("completed"),
+  installments: z.number().min(1).max(12).optional().default(1),
+});
+
 interface QuoteFormData {
   customerId: number;
   validUntil: string;
   notes?: string;
+}
+
+interface SaleConversionData {
+  paymentMethod: string;
+  paymentStatus: string;
+  installments?: number;
 }
 
 interface QuoteItemForm {
@@ -50,6 +63,8 @@ interface QuoteItemForm {
 export default function QuotesPage() {
   const [selectedQuote, setSelectedQuote] = useState<QuoteWithDetails | null>(null);
   const [isNewQuoteDialogOpen, setIsNewQuoteDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [quoteToConvert, setQuoteToConvert] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [quoteItems, setQuoteItems] = useState<QuoteItemForm[]>([]);
   const queryClient = useQueryClient();
@@ -68,11 +83,20 @@ export default function QuotesPage() {
     queryKey: ["/api/products"],
   });
 
-  // Form
+  // Forms
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
     defaultValues: {
       notes: "",
+    },
+  });
+
+  const paymentForm = useForm<SaleConversionData>({
+    resolver: zodResolver(saleConversionSchema),
+    defaultValues: {
+      paymentMethod: "",
+      paymentStatus: "completed",
+      installments: 1,
     },
   });
 
@@ -158,10 +182,14 @@ export default function QuotesPage() {
   });
 
   const convertToSaleMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/quotes/${id}/convert-to-sale`),
+    mutationFn: ({ id, paymentData }: { id: number; paymentData: SaleConversionData }) => 
+      apiRequest("POST", `/api/quotes/${id}/convert-to-sale`, paymentData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      setIsPaymentDialogOpen(false);
+      setQuoteToConvert(null);
+      paymentForm.reset();
       toast({
         title: "Venda criada",
         description: "O orçamento foi convertido para venda com sucesso.",
@@ -224,6 +252,17 @@ export default function QuotesPage() {
 
   const removeQuoteItem = (index: number) => {
     setQuoteItems(quoteItems.filter((_, i) => i !== index));
+  };
+
+  const handleConvertToSale = (quoteId: number) => {
+    setQuoteToConvert(quoteId);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handlePaymentSubmit = (data: SaleConversionData) => {
+    if (quoteToConvert) {
+      convertToSaleMutation.mutate({ id: quoteToConvert, paymentData: data });
+    }
   };
 
   const updateQuoteItem = (index: number, field: keyof QuoteItemForm, value: number) => {
@@ -622,7 +661,7 @@ export default function QuotesPage() {
                     {quote.status === "pending" && (
                       <Button
                         size="sm"
-                        onClick={() => convertToSaleMutation.mutate(quote.id)}
+                        onClick={() => handleConvertToSale(quote.id)}
                         disabled={convertToSaleMutation.isPending}
                       >
                         <ShoppingCart className="w-4 h-4" />
@@ -691,6 +730,100 @@ export default function QuotesPage() {
             </Card>
           )}
         </div>
+
+        {/* Payment Method Dialog */}
+        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Converter para Venda</DialogTitle>
+            </DialogHeader>
+            <Form {...paymentForm}>
+              <form onSubmit={paymentForm.handleSubmit(handlePaymentSubmit)} className="space-y-4">
+                <FormField
+                  control={paymentForm.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma de Pagamento</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a forma de pagamento" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cash">Dinheiro</SelectItem>
+                          <SelectItem value="card">Cartão</SelectItem>
+                          <SelectItem value="pix">PIX</SelectItem>
+                          <SelectItem value="installment">Crediário</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={paymentForm.control}
+                  name="paymentStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status do Pagamento</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="completed">Pago</SelectItem>
+                          <SelectItem value="pending">Pendente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {paymentForm.watch("paymentMethod") === "installment" && (
+                  <FormField
+                    control={paymentForm.control}
+                    name="installments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número de Parcelas</FormLabel>
+                        <Select onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o número de parcelas" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                              <SelectItem key={num} value={num.toString()}>
+                                {num}x
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={convertToSaleMutation.isPending}>
+                    {convertToSaleMutation.isPending ? "Convertendo..." : "Converter para Venda"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

@@ -598,12 +598,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quotes/:id/convert-to-sale", authenticateToken, async (req, res) => {
     try {
-      const sale = await storage.convertQuoteToSale(Number(req.params.id));
+      const { paymentMethod, paymentStatus, installments } = req.body;
+      
+      if (!paymentMethod) {
+        return res.status(400).json({ message: "Payment method is required" });
+      }
+
+      const sale = await storage.convertQuoteToSale(Number(req.params.id), {
+        paymentMethod,
+        paymentStatus: paymentStatus || 'completed',
+        installments: installments || 1
+      });
+      
       if (!sale) {
         return res.status(404).json({ message: "Quote not found" });
       }
       res.json(sale);
     } catch (error) {
+      console.error("Error converting quote to sale:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
