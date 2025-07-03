@@ -752,10 +752,11 @@ export default function QuotesPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="cash">Dinheiro</SelectItem>
-                          <SelectItem value="card">Cartão</SelectItem>
+                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                          <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
                           <SelectItem value="pix">PIX</SelectItem>
-                          <SelectItem value="installment">Crediário</SelectItem>
+                          <SelectItem value="crediario">Crediário</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -785,7 +786,7 @@ export default function QuotesPage() {
                   )}
                 />
 
-                {paymentForm.watch("paymentMethod") === "installment" && (
+                {(paymentForm.watch("paymentMethod") === "cartao_credito" || paymentForm.watch("paymentMethod") === "crediario") && (
                   <FormField
                     control={paymentForm.control}
                     name="installments"
@@ -810,6 +811,30 @@ export default function QuotesPage() {
                       </FormItem>
                     )}
                   />
+                )}
+
+                {/* Resumo do parcelamento */}
+                {(paymentForm.watch("paymentMethod") === "cartao_credito" || paymentForm.watch("paymentMethod") === "crediario") && 
+                 paymentForm.watch("installments") && quoteToConvert && (
+                  <div className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="text-sm">
+                      <div className="font-medium text-blue-900 dark:text-blue-100">
+                        {(() => {
+                          const quote = quotes.find(q => q.id === quoteToConvert);
+                          const installments = paymentForm.watch("installments") || 1;
+                          const totalValue = quote ? parseFloat(quote.finalAmount) : 0;
+                          const installmentValue = totalValue > 0 ? (totalValue / installments).toFixed(2) : "0,00";
+                          return `${installments}x de R$ ${installmentValue}`;
+                        })()}
+                      </div>
+                      <div className="text-blue-700 dark:text-blue-300">
+                        Total: R$ {(() => {
+                          const quote = quotes.find(q => q.id === quoteToConvert);
+                          return quote ? parseFloat(quote.finalAmount).toFixed(2) : "0,00";
+                        })()}
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 <DialogFooter>
