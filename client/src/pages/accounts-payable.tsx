@@ -56,6 +56,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { AppLayout } from "@/components/layout/app-layout";
 
 interface AccountPayable {
   id: number;
@@ -254,19 +255,20 @@ export default function AccountsPayablePage() {
   const installmentsField = watch("installments");
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contas a Pagar</h1>
-          <p className="text-muted-foreground">
-            Gerencie pagamentos a fornecedores e despesas da empresa
-          </p>
+    <AppLayout title="Contas a Pagar" subtitle="Gerencie pagamentos a fornecedores e despesas da empresa">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Contas a Pagar</h1>
+            <p className="text-muted-foreground">
+              Gerencie pagamentos a fornecedores e despesas da empresa
+            </p>
+          </div>
+          <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Conta
+          </Button>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Conta
-        </Button>
-      </div>
 
       {/* Stats Cards */}
       {stats && (
@@ -665,6 +667,7 @@ export default function AccountsPayablePage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

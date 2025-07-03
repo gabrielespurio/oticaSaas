@@ -17,7 +17,6 @@ import Prescriptions from "@/pages/prescriptions";
 import Reports from "@/pages/reports";
 import Quotes from "@/pages/quotes";
 import ReceivablesPage from "@/pages/financial/receivables";
-import PayablesPage from "@/pages/financial/payables";
 import AccountsPayablePage from "@/pages/accounts-payable";
 
 
@@ -66,11 +65,7 @@ function Router() {
           <ReceivablesPage />
         </ProtectedRoute>
       </Route>
-      <Route path="/financial/payables">
-        <ProtectedRoute>
-          <PayablesPage />
-        </ProtectedRoute>
-      </Route>
+
       <Route path="/appointments">
         <ProtectedRoute>
           <Appointments />
