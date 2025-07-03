@@ -464,7 +464,7 @@ export class DatabaseStorage implements IStorage {
             status: 'pending', // A receber - parcela do crediário
           });
         }
-      } else if ((sale.paymentMethod === 'cartao' || sale.paymentMethod === 'card') && sale.installments && sale.installments > 1) {
+      } else if ((sale.paymentMethod === 'cartao_credito' || sale.paymentMethod === 'cartao' || sale.paymentMethod === 'card') && sale.installments && sale.installments > 1) {
         // For card with installments - only create receivables if payment is not immediate
         const installmentCount = sale.installments;
         const installmentAmount = parseFloat(sale.finalAmount) / installmentCount;
@@ -478,7 +478,7 @@ export class DatabaseStorage implements IStorage {
             customerId: sale.customerId,
             saleId: sale.id,
             type: 'receivable',
-            description: `Parcela ${i}/${installmentCount} (Cartão) - Venda #${saleNumber}`,
+            description: `Parcela ${i}/${installmentCount} (Cartão de Crédito) - Venda #${saleNumber}`,
             amount: installmentAmount.toFixed(2),
             dueDate,
             status: 'pending', // A receber - parcela do cartão

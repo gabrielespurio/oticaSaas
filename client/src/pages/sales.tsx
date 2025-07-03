@@ -180,12 +180,17 @@ export default function Sales() {
 
   const getPaymentMethodText = (method: string) => {
     switch (method) {
+      case "dinheiro":
       case "cash":
         return "Dinheiro";
+      case "cartao_debito":
+        return "Cartão de Débito";
+      case "cartao_credito":
       case "card":
-        return "Cartão";
+        return "Cartão de Crédito";
       case "pix":
         return "PIX";
+      case "crediario":
       case "installment":
         return "Crediário";
       default:
@@ -316,6 +321,7 @@ export default function Sales() {
         finalAmount: totalAmount.toString(),
         paymentMethod: data.paymentMethod,
         paymentStatus: data.paymentStatus,
+        installments: data.installments || 1,
         notes: data.notes || "",
       };
 
@@ -581,10 +587,11 @@ export default function Sales() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="cash">Dinheiro</SelectItem>
-                              <SelectItem value="card">Cartão</SelectItem>
+                              <SelectItem value="dinheiro">Dinheiro</SelectItem>
                               <SelectItem value="pix">PIX</SelectItem>
-                              <SelectItem value="installment">Crediário</SelectItem>
+                              <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                              <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                              <SelectItem value="crediario">Crediário</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -615,31 +622,63 @@ export default function Sales() {
                       )}
                     />
 
-                    {newSaleForm.watch("paymentMethod") === "installment" && (
+                    {(newSaleForm.watch("paymentMethod") === "cartao_credito" || newSaleForm.watch("paymentMethod") === "crediario") && (
                       <FormField
                         control={newSaleForm.control}
                         name="installments"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Parcelas</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={field.value?.toString()}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Quantidade" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-                                  <SelectItem key={num} value={num.toString()}>
-                                    {num}x
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const totalValue = newSaleForm.watch("saleType") === "from_quote" && selectedQuote 
+                            ? parseFloat(selectedQuote.finalAmount) 
+                            : getTotalAmount();
+                          
+                          return (
+                            <FormItem>
+                              <FormLabel>Parcelas</FormLabel>
+                              <Select onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={field.value?.toString()}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Quantidade" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                                    <SelectItem key={num} value={num.toString()}>
+                                      {num}x de R$ {totalValue > 0 ? (totalValue / num).toFixed(2) : "0,00"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
+                    )}
+
+                    {(newSaleForm.watch("paymentMethod") === "cartao_credito" || newSaleForm.watch("paymentMethod") === "crediario") && 
+                     newSaleForm.watch("installments") && (
+                      <div className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="text-sm">
+                          <div className="font-medium text-blue-900 dark:text-blue-100">
+                            {(() => {
+                              const installments = newSaleForm.watch("installments") || 1;
+                              const totalValue = newSaleForm.watch("saleType") === "from_quote" && selectedQuote 
+                                ? parseFloat(selectedQuote.finalAmount) 
+                                : getTotalAmount();
+                              const installmentValue = totalValue > 0 ? (totalValue / installments).toFixed(2) : "0,00";
+                              return `${installments}x de R$ ${installmentValue}`;
+                            })()}
+                          </div>
+                          <div className="text-blue-700 dark:text-blue-300">
+                            Total: R$ {(() => {
+                              const totalValue = newSaleForm.watch("saleType") === "from_quote" && selectedQuote 
+                                ? parseFloat(selectedQuote.finalAmount) 
+                                : getTotalAmount();
+                              return totalValue > 0 ? totalValue.toFixed(2) : "0,00";
+                            })()}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
 
