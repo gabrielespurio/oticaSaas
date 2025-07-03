@@ -646,20 +646,60 @@ export class DatabaseStorage implements IStorage {
     const sale = await this.createSale(insertSale, saleItems);
     await this.updateQuote(quoteId, { status: 'converted' });
 
-    // Create financial accounts if payment is in installments or crediário
-    if (paymentInfo?.paymentMethod === 'installment' && paymentInfo.installments && paymentInfo.installments > 1) {
-      const installmentAmount = parseFloat(quote.finalAmount) / paymentInfo.installments;
-      const today = new Date();
+    // Create financial accounts based on payment method and status
+    if (paymentInfo?.paymentStatus === 'pending' || 
+        (paymentInfo?.paymentMethod === 'crediario' && paymentInfo.installments && paymentInfo.installments > 1) ||
+        (paymentInfo?.paymentMethod === 'cartao_credito' && paymentInfo.installments && paymentInfo.installments > 1)) {
       
-      for (let i = 1; i <= paymentInfo.installments; i++) {
+      if (paymentInfo.paymentMethod === 'crediario' && paymentInfo.installments && paymentInfo.installments > 1) {
+        // For crediário, create installments
+        const installmentAmount = parseFloat(quote.finalAmount) / paymentInfo.installments;
+        const today = new Date();
+        
+        for (let i = 1; i <= paymentInfo.installments; i++) {
+          const dueDate = new Date(today);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          
+          await this.createFinancialAccount({
+            customerId: quote.customerId,
+            type: 'receivable',
+            description: `Parcela ${i}/${paymentInfo.installments} - Venda #${saleNumber}`,
+            amount: installmentAmount.toFixed(2),
+            dueDate,
+            status: 'pending',
+            saleId: sale.id,
+          });
+        }
+      } else if (paymentInfo.paymentMethod === 'cartao_credito' && paymentInfo.installments && paymentInfo.installments > 1) {
+        // For card with installments
+        const installmentAmount = parseFloat(quote.finalAmount) / paymentInfo.installments;
+        const today = new Date();
+        
+        for (let i = 1; i <= paymentInfo.installments; i++) {
+          const dueDate = new Date(today);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          
+          await this.createFinancialAccount({
+            customerId: quote.customerId,
+            type: 'receivable',
+            description: `Parcela ${i}/${paymentInfo.installments} (Cartão de Crédito) - Venda #${saleNumber}`,
+            amount: installmentAmount.toFixed(2),
+            dueDate,
+            status: 'pending',
+            saleId: sale.id,
+          });
+        }
+      } else if (paymentInfo.paymentStatus === 'pending') {
+        // For any pending payment, create a single receivable
+        const today = new Date();
         const dueDate = new Date(today);
-        dueDate.setMonth(dueDate.getMonth() + i);
+        dueDate.setDate(dueDate.getDate() + 30);
         
         await this.createFinancialAccount({
           customerId: quote.customerId,
           type: 'receivable',
-          description: `Parcela ${i}/${paymentInfo.installments} - Venda #${saleNumber}`,
-          amount: installmentAmount.toFixed(2),
+          description: `Venda #${saleNumber} - ${paymentInfo.paymentMethod === 'dinheiro' ? 'Dinheiro' : paymentInfo.paymentMethod === 'pix' ? 'PIX' : 'Pagamento'} Pendente`,
+          amount: quote.finalAmount,
           dueDate,
           status: 'pending',
           saleId: sale.id,
