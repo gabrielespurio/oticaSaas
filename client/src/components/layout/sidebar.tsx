@@ -34,7 +34,7 @@ const navigation = [
     icon: DollarSign,
     subItems: [
       { name: "Contas a Receber", href: "/financial/receivables", icon: Receipt },
-      { name: "Contas a Pagar", href: "/financial/payables", icon: CreditCard },
+      { name: "Contas a Pagar", href: "/accounts-payable", icon: CreditCard },
     ]
   },
   { name: "Agendamentos", href: "/appointments", icon: Calendar },

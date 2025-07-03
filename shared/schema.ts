@@ -180,6 +180,75 @@ export const prescriptionFiles = pgTable("prescription_files", {
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
 });
 
+// Suppliers table
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  cnpj: text("cnpj").unique(),
+  street: varchar("street", { length: 255 }),
+  number: varchar("number", { length: 20 }),
+  complement: text("complement"),
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Expense categories table
+export const expenseCategories = pgTable("expense_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").default("#6B7280"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Accounts payable table
+export const accountsPayable = pgTable("accounts_payable", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  categoryId: integer("category_id").references(() => expenseCategories.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  description: text("description").notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0"),
+  remainingAmount: decimal("remaining_amount", { precision: 10, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  paidDate: timestamp("paid_date"),
+  paymentMethod: text("payment_method"), // dinheiro, pix, boleto, cartao, transferencia
+  referenceNumber: text("reference_number"), // numero do comprovante
+  installments: integer("installments").default(1),
+  currentInstallment: integer("current_installment").default(1),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringType: text("recurring_type"), // monthly, quarterly, yearly
+  recurringDay: integer("recurring_day"), // dia do mes para recorrencia
+  status: text("status").notNull().default("pending"), // pending, paid, overdue, cancelled
+  notes: text("notes"),
+  parentId: integer("parent_id"), // para parcelas - self reference
+  attachments: jsonb("attachments"), // para comprovantes
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Payment history table
+export const paymentHistory = pgTable("payment_history", {
+  id: serial("id").primaryKey(),
+  accountPayableId: integer("account_payable_id").notNull().references(() => accountsPayable.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  referenceNumber: text("reference_number"),
+  notes: text("notes"),
+  attachments: jsonb("attachments"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   sales: many(sales),
@@ -292,6 +361,44 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   }),
 }));
 
+export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  accountsPayable: many(accountsPayable),
+}));
+
+export const expenseCategoriesRelations = relations(expenseCategories, ({ many }) => ({
+  accountsPayable: many(accountsPayable),
+}));
+
+export const accountsPayableRelations = relations(accountsPayable, ({ one, many }) => ({
+  supplier: one(suppliers, {
+    fields: [accountsPayable.supplierId],
+    references: [suppliers.id],
+  }),
+  category: one(expenseCategories, {
+    fields: [accountsPayable.categoryId],
+    references: [expenseCategories.id],
+  }),
+  user: one(users, {
+    fields: [accountsPayable.userId],
+    references: [users.id],
+  }),
+  installments: many(accountsPayable, {
+    relationName: "installments",
+  }),
+  paymentHistory: many(paymentHistory),
+}));
+
+export const paymentHistoryRelations = relations(paymentHistory, ({ one }) => ({
+  accountPayable: one(accountsPayable, {
+    fields: [paymentHistory.accountPayableId],
+    references: [accountsPayable.id],
+  }),
+  user: one(users, {
+    fields: [paymentHistory.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -384,6 +491,34 @@ export const insertPrescriptionFileSchema = createInsertSchema(prescriptionFiles
   uploadedAt: true,
 });
 
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAccountPayableSchema = createInsertSchema(accountsPayable).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  dueDate: z.union([z.string(), z.date()]).transform((val) => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
+});
+
+export const insertPaymentHistorySchema = createInsertSchema(paymentHistory).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  paymentDate: z.union([z.string(), z.date()]).transform((val) => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -420,3 +555,15 @@ export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 
 export type PrescriptionFile = typeof prescriptionFiles.$inferSelect;
 export type InsertPrescriptionFile = z.infer<typeof insertPrescriptionFileSchema>;
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+
+export type ExpenseCategory = typeof expenseCategories.$inferSelect;
+export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;
+
+export type AccountPayable = typeof accountsPayable.$inferSelect;
+export type InsertAccountPayable = z.infer<typeof insertAccountPayableSchema>;
+
+export type PaymentHistory = typeof paymentHistory.$inferSelect;
+export type InsertPaymentHistory = z.infer<typeof insertPaymentHistorySchema>;

@@ -1,12 +1,15 @@
 import {
   users, customers, products, productCategories, prescriptions, prescriptionFiles,
   sales, saleItems, quotes, quoteItems, financialAccounts, appointments,
+  suppliers, expenseCategories, accountsPayable, paymentHistory,
   type User, type InsertUser, type Customer, type InsertCustomer,
   type Product, type InsertProduct, type ProductCategory, type InsertProductCategory,
   type Prescription, type InsertPrescription, type PrescriptionFile, type InsertPrescriptionFile,
   type Sale, type InsertSale, type SaleItem, type InsertSaleItem, type Quote, type InsertQuote,
   type QuoteItem, type InsertQuoteItem, type FinancialAccount, type InsertFinancialAccount,
-  type Appointment, type InsertAppointment
+  type Appointment, type InsertAppointment, type Supplier, type InsertSupplier,
+  type ExpenseCategory, type InsertExpenseCategory, type AccountPayable, type InsertAccountPayable,
+  type PaymentHistory, type InsertPaymentHistory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, like, or, ilike } from "drizzle-orm";
@@ -98,6 +101,49 @@ export interface IStorage {
     accountsReceivable: string;
     lowStockCount: number;
     overdueCount: number;
+  }>;
+
+  // Suppliers
+  getSuppliers(limit?: number, offset?: number): Promise<Supplier[]>;
+  getSupplier(id: number): Promise<Supplier | undefined>;
+  getSupplierByCnpj(cnpj: string): Promise<Supplier | undefined>;
+  createSupplier(supplier: InsertSupplier): Promise<Supplier>;
+  updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier | undefined>;
+  searchSuppliers(query: string): Promise<Supplier[]>;
+
+  // Expense Categories
+  getExpenseCategories(): Promise<ExpenseCategory[]>;
+  getExpenseCategory(id: number): Promise<ExpenseCategory | undefined>;
+  createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory>;
+  updateExpenseCategory(id: number, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory | undefined>;
+
+  // Accounts Payable
+  getAccountsPayable(limit?: number, offset?: number): Promise<(AccountPayable & { supplier?: Supplier; category?: ExpenseCategory })[]>;
+  getAccountPayable(id: number): Promise<AccountPayable | undefined>;
+  getAccountPayableWithDetails(id: number): Promise<(AccountPayable & { supplier?: Supplier; category?: ExpenseCategory; paymentHistory: PaymentHistory[] }) | undefined>;
+  createAccountPayable(account: InsertAccountPayable): Promise<AccountPayable>;
+  updateAccountPayable(id: number, account: Partial<InsertAccountPayable>): Promise<AccountPayable | undefined>;
+  deleteAccountPayable(id: number): Promise<boolean>;
+  getOverdueAccountsPayable(): Promise<AccountPayable[]>;
+  getDueAccountsPayable(days?: number): Promise<AccountPayable[]>;
+  getAccountsPayableBySupplier(supplierId: number): Promise<AccountPayable[]>;
+  getAccountsPayableByCategory(categoryId: number): Promise<AccountPayable[]>;
+  getAccountsPayableByDateRange(startDate: Date, endDate: Date): Promise<AccountPayable[]>;
+  processRecurringPayments(): Promise<void>;
+  searchAccountsPayable(query: string): Promise<AccountPayable[]>;
+
+  // Payment History
+  getPaymentHistory(accountPayableId: number): Promise<PaymentHistory[]>;
+  createPaymentHistory(payment: InsertPaymentHistory): Promise<PaymentHistory>;
+  getPaymentHistoryByDateRange(startDate: Date, endDate: Date): Promise<PaymentHistory[]>;
+  
+  // Accounts Payable Reports
+  getAccountsPayableStats(): Promise<{
+    totalPending: string;
+    totalOverdue: string;
+    totalPaidThisMonth: string;
+    upcomingPayments: number;
+    averagePaymentDelay: number;
   }>;
 }
 
@@ -895,6 +941,383 @@ export class DatabaseStorage implements IStorage {
       accountsReceivable: accountsReceivable.total || '0',
       lowStockCount: lowStockCount.count,
       overdueCount: overdueCount.count,
+    };
+  }
+
+  // Suppliers
+  async getSuppliers(limit = 50, offset = 0): Promise<Supplier[]> {
+    return await db.select().from(suppliers)
+      .where(eq(suppliers.isActive, true))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(desc(suppliers.createdAt));
+  }
+
+  async getSupplier(id: number): Promise<Supplier | undefined> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
+    return supplier || undefined;
+  }
+
+  async getSupplierByCnpj(cnpj: string): Promise<Supplier | undefined> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.cnpj, cnpj));
+    return supplier || undefined;
+  }
+
+  async createSupplier(insertSupplier: InsertSupplier): Promise<Supplier> {
+    const [supplier] = await db.insert(suppliers).values(insertSupplier).returning();
+    return supplier;
+  }
+
+  async updateSupplier(id: number, updateData: Partial<InsertSupplier>): Promise<Supplier | undefined> {
+    const [supplier] = await db.update(suppliers)
+      .set(updateData)
+      .where(eq(suppliers.id, id))
+      .returning();
+    return supplier || undefined;
+  }
+
+  async searchSuppliers(query: string): Promise<Supplier[]> {
+    return await db.select().from(suppliers)
+      .where(
+        and(
+          eq(suppliers.isActive, true),
+          or(
+            ilike(suppliers.name, `%${query}%`),
+            ilike(suppliers.cnpj, `%${query}%`),
+            ilike(suppliers.email, `%${query}%`)
+          )
+        )
+      )
+      .orderBy(desc(suppliers.createdAt));
+  }
+
+  // Expense Categories
+  async getExpenseCategories(): Promise<ExpenseCategory[]> {
+    return await db.select().from(expenseCategories)
+      .where(eq(expenseCategories.isActive, true))
+      .orderBy(expenseCategories.name);
+  }
+
+  async getExpenseCategory(id: number): Promise<ExpenseCategory | undefined> {
+    const [category] = await db.select().from(expenseCategories).where(eq(expenseCategories.id, id));
+    return category || undefined;
+  }
+
+  async createExpenseCategory(insertCategory: InsertExpenseCategory): Promise<ExpenseCategory> {
+    const [category] = await db.insert(expenseCategories).values(insertCategory).returning();
+    return category;
+  }
+
+  async updateExpenseCategory(id: number, updateData: Partial<InsertExpenseCategory>): Promise<ExpenseCategory | undefined> {
+    const [category] = await db.update(expenseCategories)
+      .set(updateData)
+      .where(eq(expenseCategories.id, id))
+      .returning();
+    return category || undefined;
+  }
+
+  // Accounts Payable
+  async getAccountsPayable(limit = 50, offset = 0): Promise<(AccountPayable & { supplier?: Supplier; category?: ExpenseCategory })[]> {
+    return await db.select({
+      id: accountsPayable.id,
+      supplierId: accountsPayable.supplierId,
+      categoryId: accountsPayable.categoryId,
+      userId: accountsPayable.userId,
+      description: accountsPayable.description,
+      totalAmount: accountsPayable.totalAmount,
+      paidAmount: accountsPayable.paidAmount,
+      remainingAmount: accountsPayable.remainingAmount,
+      dueDate: accountsPayable.dueDate,
+      paidDate: accountsPayable.paidDate,
+      paymentMethod: accountsPayable.paymentMethod,
+      referenceNumber: accountsPayable.referenceNumber,
+      installments: accountsPayable.installments,
+      currentInstallment: accountsPayable.currentInstallment,
+      isRecurring: accountsPayable.isRecurring,
+      recurringType: accountsPayable.recurringType,
+      recurringDay: accountsPayable.recurringDay,
+      status: accountsPayable.status,
+      notes: accountsPayable.notes,
+      parentId: accountsPayable.parentId,
+      attachments: accountsPayable.attachments,
+      createdAt: accountsPayable.createdAt,
+      supplier: suppliers,
+      category: expenseCategories,
+    })
+      .from(accountsPayable)
+      .leftJoin(suppliers, eq(accountsPayable.supplierId, suppliers.id))
+      .leftJoin(expenseCategories, eq(accountsPayable.categoryId, expenseCategories.id))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(desc(accountsPayable.createdAt));
+  }
+
+  async getAccountPayable(id: number): Promise<AccountPayable | undefined> {
+    const [account] = await db.select().from(accountsPayable).where(eq(accountsPayable.id, id));
+    return account || undefined;
+  }
+
+  async getAccountPayableWithDetails(id: number): Promise<(AccountPayable & { supplier?: Supplier; category?: ExpenseCategory; paymentHistory: PaymentHistory[] }) | undefined> {
+    const [account] = await db.select({
+      id: accountsPayable.id,
+      supplierId: accountsPayable.supplierId,
+      categoryId: accountsPayable.categoryId,
+      userId: accountsPayable.userId,
+      description: accountsPayable.description,
+      totalAmount: accountsPayable.totalAmount,
+      paidAmount: accountsPayable.paidAmount,
+      remainingAmount: accountsPayable.remainingAmount,
+      dueDate: accountsPayable.dueDate,
+      paidDate: accountsPayable.paidDate,
+      paymentMethod: accountsPayable.paymentMethod,
+      referenceNumber: accountsPayable.referenceNumber,
+      installments: accountsPayable.installments,
+      currentInstallment: accountsPayable.currentInstallment,
+      isRecurring: accountsPayable.isRecurring,
+      recurringType: accountsPayable.recurringType,
+      recurringDay: accountsPayable.recurringDay,
+      status: accountsPayable.status,
+      notes: accountsPayable.notes,
+      parentId: accountsPayable.parentId,
+      attachments: accountsPayable.attachments,
+      createdAt: accountsPayable.createdAt,
+      supplier: suppliers,
+      category: expenseCategories,
+    })
+      .from(accountsPayable)
+      .leftJoin(suppliers, eq(accountsPayable.supplierId, suppliers.id))
+      .leftJoin(expenseCategories, eq(accountsPayable.categoryId, expenseCategories.id))
+      .where(eq(accountsPayable.id, id));
+
+    if (!account) return undefined;
+
+    const paymentHistoryData = await db.select().from(paymentHistory)
+      .where(eq(paymentHistory.accountPayableId, id))
+      .orderBy(desc(paymentHistory.createdAt));
+
+    return {
+      ...account,
+      paymentHistory: paymentHistoryData,
+    };
+  }
+
+  async createAccountPayable(insertAccount: InsertAccountPayable): Promise<AccountPayable> {
+    const [account] = await db.insert(accountsPayable).values({
+      ...insertAccount,
+      remainingAmount: insertAccount.totalAmount,
+    }).returning();
+    return account;
+  }
+
+  async updateAccountPayable(id: number, updateData: Partial<InsertAccountPayable>): Promise<AccountPayable | undefined> {
+    const [account] = await db.update(accountsPayable)
+      .set(updateData)
+      .where(eq(accountsPayable.id, id))
+      .returning();
+    return account || undefined;
+  }
+
+  async deleteAccountPayable(id: number): Promise<boolean> {
+    const result = await db.delete(accountsPayable).where(eq(accountsPayable.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getOverdueAccountsPayable(): Promise<AccountPayable[]> {
+    const today = new Date();
+    return await db.select().from(accountsPayable)
+      .where(
+        and(
+          eq(accountsPayable.status, 'pending'),
+          lte(accountsPayable.dueDate, today)
+        )
+      )
+      .orderBy(accountsPayable.dueDate);
+  }
+
+  async getDueAccountsPayable(days = 7): Promise<AccountPayable[]> {
+    const today = new Date();
+    const futureDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
+    
+    return await db.select().from(accountsPayable)
+      .where(
+        and(
+          eq(accountsPayable.status, 'pending'),
+          gte(accountsPayable.dueDate, today),
+          lte(accountsPayable.dueDate, futureDate)
+        )
+      )
+      .orderBy(accountsPayable.dueDate);
+  }
+
+  async getAccountsPayableBySupplier(supplierId: number): Promise<AccountPayable[]> {
+    return await db.select().from(accountsPayable)
+      .where(eq(accountsPayable.supplierId, supplierId))
+      .orderBy(desc(accountsPayable.createdAt));
+  }
+
+  async getAccountsPayableByCategory(categoryId: number): Promise<AccountPayable[]> {
+    return await db.select().from(accountsPayable)
+      .where(eq(accountsPayable.categoryId, categoryId))
+      .orderBy(desc(accountsPayable.createdAt));
+  }
+
+  async getAccountsPayableByDateRange(startDate: Date, endDate: Date): Promise<AccountPayable[]> {
+    return await db.select().from(accountsPayable)
+      .where(
+        and(
+          gte(accountsPayable.dueDate, startDate),
+          lte(accountsPayable.dueDate, endDate)
+        )
+      )
+      .orderBy(accountsPayable.dueDate);
+  }
+
+  async processRecurringPayments(): Promise<void> {
+    const today = new Date();
+    const recurringAccounts = await db.select().from(accountsPayable)
+      .where(
+        and(
+          eq(accountsPayable.isRecurring, true),
+          eq(accountsPayable.status, 'paid')
+        )
+      );
+
+    for (const account of recurringAccounts) {
+      if (!account.recurringType || !account.recurringDay) continue;
+
+      const lastPayment = account.paidDate || account.createdAt;
+      const nextDueDate = new Date(lastPayment);
+
+      switch (account.recurringType) {
+        case 'monthly':
+          nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+          break;
+        case 'quarterly':
+          nextDueDate.setMonth(nextDueDate.getMonth() + 3);
+          break;
+        case 'yearly':
+          nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+          break;
+      }
+
+      nextDueDate.setDate(account.recurringDay);
+
+      if (nextDueDate <= today) {
+        await db.insert(accountsPayable).values({
+          supplierId: account.supplierId,
+          categoryId: account.categoryId,
+          userId: account.userId,
+          description: `${account.description} - ${nextDueDate.toLocaleDateString()}`,
+          totalAmount: account.totalAmount,
+          remainingAmount: account.totalAmount,
+          dueDate: nextDueDate,
+          isRecurring: true,
+          recurringType: account.recurringType,
+          recurringDay: account.recurringDay,
+          status: 'pending',
+          parentId: account.id,
+        });
+      }
+    }
+  }
+
+  async searchAccountsPayable(query: string): Promise<AccountPayable[]> {
+    return await db.select().from(accountsPayable)
+      .where(
+        or(
+          ilike(accountsPayable.description, `%${query}%`),
+          ilike(accountsPayable.referenceNumber, `%${query}%`)
+        )
+      )
+      .orderBy(desc(accountsPayable.createdAt));
+  }
+
+  // Payment History
+  async getPaymentHistory(accountPayableId: number): Promise<PaymentHistory[]> {
+    return await db.select().from(paymentHistory)
+      .where(eq(paymentHistory.accountPayableId, accountPayableId))
+      .orderBy(desc(paymentHistory.createdAt));
+  }
+
+  async createPaymentHistory(insertPayment: InsertPaymentHistory): Promise<PaymentHistory> {
+    const [payment] = await db.insert(paymentHistory).values(insertPayment).returning();
+    return payment;
+  }
+
+  async getPaymentHistoryByDateRange(startDate: Date, endDate: Date): Promise<PaymentHistory[]> {
+    return await db.select().from(paymentHistory)
+      .where(
+        and(
+          gte(paymentHistory.paymentDate, startDate),
+          lte(paymentHistory.paymentDate, endDate)
+        )
+      )
+      .orderBy(desc(paymentHistory.paymentDate));
+  }
+
+  // Accounts Payable Reports
+  async getAccountsPayableStats(): Promise<{
+    totalPending: string;
+    totalOverdue: string;
+    totalPaidThisMonth: string;
+    upcomingPayments: number;
+    averagePaymentDelay: number;
+  }> {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    // Total pending
+    const [totalPending] = await db.select({
+      total: sql<string>`COALESCE(SUM(${accountsPayable.remainingAmount}), 0)`,
+    })
+      .from(accountsPayable)
+      .where(eq(accountsPayable.status, 'pending'));
+
+    // Total overdue
+    const [totalOverdue] = await db.select({
+      total: sql<string>`COALESCE(SUM(${accountsPayable.remainingAmount}), 0)`,
+    })
+      .from(accountsPayable)
+      .where(
+        and(
+          eq(accountsPayable.status, 'pending'),
+          lte(accountsPayable.dueDate, today)
+        )
+      );
+
+    // Total paid this month
+    const [totalPaidThisMonth] = await db.select({
+      total: sql<string>`COALESCE(SUM(${paymentHistory.amount}), 0)`,
+    })
+      .from(paymentHistory)
+      .where(
+        and(
+          gte(paymentHistory.paymentDate, startOfMonth),
+          lte(paymentHistory.paymentDate, endOfMonth)
+        )
+      );
+
+    // Upcoming payments (next 7 days)
+    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const [upcomingPayments] = await db.select({
+      count: count(),
+    })
+      .from(accountsPayable)
+      .where(
+        and(
+          eq(accountsPayable.status, 'pending'),
+          gte(accountsPayable.dueDate, today),
+          lte(accountsPayable.dueDate, nextWeek)
+        )
+      );
+
+    return {
+      totalPending: totalPending.total || '0',
+      totalOverdue: totalOverdue.total || '0',
+      totalPaidThisMonth: totalPaidThisMonth.total || '0',
+      upcomingPayments: upcomingPayments.count,
+      averagePaymentDelay: 0, // This would require more complex calculation
     };
   }
 }

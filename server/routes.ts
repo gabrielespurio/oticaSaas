@@ -6,7 +6,12 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, insertQuoteItemSchema, insertPrescriptionSchema, insertPrescriptionFileSchema, insertAppointmentSchema, insertFinancialAccountSchema } from "@shared/schema";
+import { 
+  insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, 
+  insertQuoteItemSchema, insertPrescriptionSchema, insertPrescriptionFileSchema, 
+  insertAppointmentSchema, insertFinancialAccountSchema, insertSupplierSchema,
+  insertExpenseCategorySchema, insertAccountPayableSchema, insertPaymentHistorySchema
+} from "@shared/schema";
 import { z } from "zod";
 import { PDFService } from "./pdf-service";
 
@@ -783,6 +788,312 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Suppliers routes
+  app.get("/api/suppliers", authenticateToken, async (req, res) => {
+    try {
+      const { limit, offset } = req.query;
+      const suppliers = await storage.getSuppliers(
+        limit ? parseInt(limit as string) : undefined,
+        offset ? parseInt(offset as string) : undefined
+      );
+      res.json(suppliers);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/suppliers/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const supplier = await storage.getSupplier(parseInt(id));
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+      res.json(supplier);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/suppliers", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertSupplierSchema.parse(req.body);
+      const supplier = await storage.createSupplier(validatedData);
+      res.status(201).json(supplier);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/suppliers/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertSupplierSchema.partial().parse(req.body);
+      const supplier = await storage.updateSupplier(parseInt(id), validatedData);
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+      res.json(supplier);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/suppliers/search/:query", authenticateToken, async (req, res) => {
+    try {
+      const { query } = req.params;
+      const suppliers = await storage.searchSuppliers(query);
+      res.json(suppliers);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Expense Categories routes
+  app.get("/api/expense-categories", authenticateToken, async (req, res) => {
+    try {
+      const categories = await storage.getExpenseCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/expense-categories/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const category = await storage.getExpenseCategory(parseInt(id));
+      if (!category) {
+        return res.status(404).json({ message: "Expense category not found" });
+      }
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/expense-categories", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertExpenseCategorySchema.parse(req.body);
+      const category = await storage.createExpenseCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/expense-categories/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertExpenseCategorySchema.partial().parse(req.body);
+      const category = await storage.updateExpenseCategory(parseInt(id), validatedData);
+      if (!category) {
+        return res.status(404).json({ message: "Expense category not found" });
+      }
+      res.json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Accounts Payable routes
+  app.get("/api/accounts-payable", authenticateToken, async (req, res) => {
+    try {
+      const { limit, offset } = req.query;
+      const accounts = await storage.getAccountsPayable(
+        limit ? parseInt(limit as string) : undefined,
+        offset ? parseInt(offset as string) : undefined
+      );
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/accounts-payable/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const account = await storage.getAccountPayableWithDetails(parseInt(id));
+      if (!account) {
+        return res.status(404).json({ message: "Account payable not found" });
+      }
+      res.json(account);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/accounts-payable", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const validatedData = insertAccountPayableSchema.parse({
+        ...req.body,
+        userId: req.user?.userId
+      });
+      const account = await storage.createAccountPayable(validatedData);
+      res.status(201).json(account);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/accounts-payable/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertAccountPayableSchema.partial().parse(req.body);
+      const account = await storage.updateAccountPayable(parseInt(id), validatedData);
+      if (!account) {
+        return res.status(404).json({ message: "Account payable not found" });
+      }
+      res.json(account);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/accounts-payable/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteAccountPayable(parseInt(id));
+      if (!success) {
+        return res.status(404).json({ message: "Account payable not found" });
+      }
+      res.json({ message: "Account payable deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/accounts-payable/overdue", authenticateToken, async (req, res) => {
+    try {
+      const accounts = await storage.getOverdueAccountsPayable();
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/accounts-payable/due/:days", authenticateToken, async (req, res) => {
+    try {
+      const { days } = req.params;
+      const accounts = await storage.getDueAccountsPayable(parseInt(days));
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/accounts-payable/supplier/:supplierId", authenticateToken, async (req, res) => {
+    try {
+      const { supplierId } = req.params;
+      const accounts = await storage.getAccountsPayableBySupplier(parseInt(supplierId));
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/accounts-payable/category/:categoryId", authenticateToken, async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+      const accounts = await storage.getAccountsPayableByCategory(parseInt(categoryId));
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/accounts-payable/search/:query", authenticateToken, async (req, res) => {
+    try {
+      const { query } = req.params;
+      const accounts = await storage.searchAccountsPayable(query);
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/accounts-payable/stats", authenticateToken, async (req, res) => {
+    try {
+      const stats = await storage.getAccountsPayableStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Payment History routes
+  app.get("/api/payment-history/:accountPayableId", authenticateToken, async (req, res) => {
+    try {
+      const { accountPayableId } = req.params;
+      const history = await storage.getPaymentHistory(parseInt(accountPayableId));
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/payment-history", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const validatedData = insertPaymentHistorySchema.parse({
+        ...req.body,
+        userId: req.user?.userId
+      });
+      const payment = await storage.createPaymentHistory(validatedData);
+      
+      // Update the account payable with payment information
+      const account = await storage.getAccountPayable(validatedData.accountPayableId);
+      if (account) {
+        const newPaidAmount = parseFloat(account.paidAmount || '0') + parseFloat(validatedData.amount);
+        const newRemainingAmount = parseFloat(account.totalAmount) - newPaidAmount;
+        const newStatus = newRemainingAmount <= 0 ? 'paid' : 'pending';
+        
+        await storage.updateAccountPayable(validatedData.accountPayableId, {
+          paidAmount: newPaidAmount.toFixed(2),
+          remainingAmount: newRemainingAmount.toFixed(2),
+          status: newStatus,
+          paidDate: newStatus === 'paid' ? new Date() : undefined,
+          paymentMethod: validatedData.paymentMethod,
+          referenceNumber: validatedData.referenceNumber,
+        });
+      }
+      
+      res.status(201).json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Process recurring payments (should be called via cron job)
+  app.post("/api/accounts-payable/process-recurring", authenticateToken, async (req, res) => {
+    try {
+      await storage.processRecurringPayments();
+      res.json({ message: "Recurring payments processed successfully" });
+    } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
   });

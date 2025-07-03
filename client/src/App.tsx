@@ -18,6 +18,7 @@ import Reports from "@/pages/reports";
 import Quotes from "@/pages/quotes";
 import ReceivablesPage from "@/pages/financial/receivables";
 import PayablesPage from "@/pages/financial/payables";
+import AccountsPayablePage from "@/pages/accounts-payable";
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -88,6 +89,11 @@ function Router() {
       <Route path="/quotes">
         <ProtectedRoute>
           <Quotes />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/accounts-payable">
+        <ProtectedRoute>
+          <AccountsPayablePage />
         </ProtectedRoute>
       </Route>
 
