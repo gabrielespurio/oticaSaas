@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Eye, FileText, Search } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Eye, FileText, Search, Edit, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { AppLayout } from "@/components/layout/app-layout";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Sale, Customer, SaleItem, Product } from "@shared/schema";
 
 interface SaleWithDetails extends Sale {
@@ -16,12 +23,54 @@ interface SaleWithDetails extends Sale {
   items: (SaleItem & { product: Product })[];
 }
 
+const editSaleSchema = z.object({
+  paymentMethod: z.string().min(1, "Forma de pagamento é obrigatória"),
+  paymentStatus: z.string().min(1, "Status de pagamento é obrigatório"),
+  notes: z.string().optional(),
+});
+
+type EditSaleData = z.infer<typeof editSaleSchema>;
+
 export default function Sales() {
   const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: sales = [], isLoading } = useQuery<SaleWithDetails[]>({
     queryKey: ["/api/sales"],
+  });
+
+  const editForm = useForm<EditSaleData>({
+    resolver: zodResolver(editSaleSchema),
+    defaultValues: {
+      paymentMethod: "",
+      paymentStatus: "",
+      notes: "",
+    },
+  });
+
+  const editSaleMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: EditSaleData }) => 
+      apiRequest("PATCH", `/api/sales/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      setIsEditDialogOpen(false);
+      setSelectedSale(null);
+      editForm.reset();
+      toast({
+        title: "Venda atualizada",
+        description: "As informações da venda foram atualizadas com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar a venda.",
+        variant: "destructive",
+      });
+    },
   });
 
   const getPaymentMethodText = (method: string) => {
@@ -62,6 +111,22 @@ export default function Sales() {
         return "Devolvida";
       default:
         return status;
+    }
+  };
+
+  const handleEditSale = (sale: SaleWithDetails) => {
+    setSelectedSale(sale);
+    editForm.reset({
+      paymentMethod: sale.paymentMethod || "",
+      paymentStatus: sale.paymentStatus || "",
+      notes: sale.notes || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const onEditSubmit = (data: EditSaleData) => {
+    if (selectedSale) {
+      editSaleMutation.mutate({ id: selectedSale.id, data });
     }
   };
 
@@ -190,17 +255,21 @@ export default function Sales() {
                             <div>
                               <h4 className="font-semibold mb-2">Itens</h4>
                               <div className="space-y-2">
-                                {selectedSale.items.map((item) => (
-                                  <div key={item.id} className="flex justify-between items-center border-b pb-2">
-                                    <div>
-                                      <p className="font-medium">{item.product.name}</p>
-                                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        Quantidade: {item.quantity} x R$ {parseFloat(item.unitPrice).toFixed(2)}
-                                      </p>
+                                {selectedSale.items?.length ? (
+                                  selectedSale.items.map((item) => (
+                                    <div key={item.id} className="flex justify-between items-center border-b pb-2">
+                                      <div>
+                                        <p className="font-medium">{item.product?.name || 'Produto não encontrado'}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                          Quantidade: {item.quantity} x R$ {parseFloat(item.unitPrice).toFixed(2)}
+                                        </p>
+                                      </div>
+                                      <p className="font-semibold">R$ {parseFloat(item.totalPrice).toFixed(2)}</p>
                                     </div>
-                                    <p className="font-semibold">R$ {parseFloat(item.totalPrice).toFixed(2)}</p>
-                                  </div>
-                                ))}
+                                  ))
+                                ) : (
+                                  <p className="text-gray-500 text-center py-4">Nenhum item encontrado</p>
+                                )}
                               </div>
                               <div className="mt-4 pt-4 border-t space-y-1">
                                 <div className="flex justify-between">
@@ -221,6 +290,15 @@ export default function Sales() {
                             </div>
                           </div>
                         )}
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => selectedSale && handleEditSale(selectedSale)}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Editar Venda
+                          </Button>
+                        </DialogFooter>
                       </DialogContent>
                     </Dialog>
 
@@ -279,6 +357,87 @@ export default function Sales() {
             </Card>
           )}
         </div>
+
+        {/* Edit Sale Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar Venda #{selectedSale?.saleNumber}</DialogTitle>
+            </DialogHeader>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma de Pagamento</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a forma de pagamento" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cash">Dinheiro</SelectItem>
+                          <SelectItem value="card">Cartão</SelectItem>
+                          <SelectItem value="pix">PIX</SelectItem>
+                          <SelectItem value="installment">Crediário</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="paymentStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status do Pagamento</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="completed">Pago</SelectItem>
+                          <SelectItem value="pending">Pendente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Observações sobre a venda" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={editSaleMutation.isPending}>
+                    {editSaleMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

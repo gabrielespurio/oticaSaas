@@ -534,6 +534,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/sales/:id", authenticateToken, async (req, res) => {
+    try {
+      const saleId = Number(req.params.id);
+      const updateData = req.body;
+
+      // Validate that sale exists
+      const existingSale = await storage.getSale(saleId);
+      if (!existingSale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+
+      // Update the sale
+      const updatedSale = await storage.updateSale(saleId, updateData);
+      if (!updatedSale) {
+        return res.status(500).json({ message: "Failed to update sale" });
+      }
+
+      res.json(updatedSale);
+    } catch (error) {
+      console.error("Error updating sale:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Quote routes
   app.get("/api/quotes", authenticateToken, async (req, res) => {
     try {
