@@ -337,104 +337,129 @@ export default function PayablesPage() {
           </Card>
         </div>
 
-        {/* Lista de Contas */}
-        <div className="grid gap-4">
-          {filteredPayables.map((payable: any) => (
-            <Card key={payable.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {payable.description}
-                      </h3>
-                      <Badge className={getStatusColor(payable.status)}>
-                        {getStatusText(payable.status)}
-                      </Badge>
-                      {isOverdue(payable.dueDate, payable.status) && (
-                        <Badge variant="destructive">Vencido</Badge>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                      <p><strong>Valor:</strong> R$ {parseFloat(payable.amount).toFixed(2)}</p>
-                      <p><strong>Vencimento:</strong> {format(new Date(payable.dueDate), "dd/MM/yyyy", { locale: ptBR })}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditPayable(payable)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedPayable(payable)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Detalhes da Conta a Pagar</DialogTitle>
-                        </DialogHeader>
-                        {selectedPayable && (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <h4 className="font-semibold mb-2">Informações da Conta</h4>
-                                <p><strong>Descrição:</strong> {selectedPayable.description}</p>
-                                <p><strong>Status:</strong> {getStatusText(selectedPayable.status)}</p>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold mb-2">Detalhes Financeiros</h4>
-                                <p><strong>Valor:</strong> R$ {parseFloat(selectedPayable.amount).toFixed(2)}</p>
-                                <p><strong>Vencimento:</strong> {format(new Date(selectedPayable.dueDate), "dd/MM/yyyy", { locale: ptBR })}</p>
-                              </div>
-                            </div>
+        {/* Tabela de Contas a Pagar */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Contas a Pagar</CardTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Lista de todas as contas a pagar cadastradas
+            </p>
+          </CardHeader>
+          <CardContent>
+            {filteredPayables.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-4 font-medium">Descrição</th>
+                      <th className="text-left p-4 font-medium">Fornecedor</th>
+                      <th className="text-left p-4 font-medium">Categoria</th>
+                      <th className="text-right p-4 font-medium">Valor Total</th>
+                      <th className="text-center p-4 font-medium">Vencimento</th>
+                      <th className="text-center p-4 font-medium">Status</th>
+                      <th className="text-center p-4 font-medium">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPayables.map((payable: any) => (
+                      <tr key={payable.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="p-4">
+                          <div className="max-w-[200px] truncate">
+                            {payable.description}
                           </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {filteredPayables.length === 0 && !searchTerm && filterStatus === "all" && (
-            <Card>
-              <CardContent className="p-12 text-center">
+                        </td>
+                        <td className="p-4">
+                          {payable.supplier?.name || 'N/A'}
+                        </td>
+                        <td className="p-4">
+                          {payable.category?.name || 'N/A'}
+                        </td>
+                        <td className="p-4 text-right font-mono">
+                          R$ {parseFloat(payable.totalAmount || 0).toFixed(2)}
+                        </td>
+                        <td className="p-4 text-center">
+                          {format(new Date(payable.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Badge className={getStatusColor(payable.status)}>
+                              {getStatusText(payable.status)}
+                            </Badge>
+                            {isOverdue(payable.dueDate, payable.status) && (
+                              <Badge variant="destructive">Vencido</Badge>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditPayable(payable)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedPayable(payable)}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle>Detalhes da Conta a Pagar</DialogTitle>
+                                </DialogHeader>
+                                {selectedPayable && (
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <h4 className="font-semibold mb-2">Informações da Conta</h4>
+                                        <p><strong>Descrição:</strong> {selectedPayable.description}</p>
+                                        <p><strong>Status:</strong> {getStatusText(selectedPayable.status)}</p>
+                                        {selectedPayable.notes && (
+                                          <p><strong>Observações:</strong> {selectedPayable.notes}</p>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold mb-2">Detalhes Financeiros</h4>
+                                        <p><strong>Valor Total:</strong> R$ {parseFloat(selectedPayable.totalAmount || selectedPayable.amount || 0).toFixed(2)}</p>
+                                        <p><strong>Valor Pago:</strong> R$ {parseFloat(selectedPayable.paidAmount || 0).toFixed(2)}</p>
+                                        <p><strong>Valor Restante:</strong> R$ {parseFloat(selectedPayable.remainingAmount || selectedPayable.totalAmount || 0).toFixed(2)}</p>
+                                        <p><strong>Vencimento:</strong> {format(new Date(selectedPayable.dueDate), "dd/MM/yyyy", { locale: ptBR })}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
                 <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Nenhuma conta a pagar
+                  Nenhuma conta a pagar encontrada
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Comece criando sua primeira conta a pagar.
+                  {searchTerm || filterStatus !== "all" 
+                    ? "Tente ajustar os filtros de busca."
+                    : "Comece criando sua primeira conta a pagar ou registrando recebimentos de compra."
+                  }
                 </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {filteredPayables.length === 0 && (searchTerm || filterStatus !== "all") && (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Search className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Nenhuma conta encontrada
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Tente ajustar os filtros de busca.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
         {/* Edit Payable Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
