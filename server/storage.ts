@@ -1503,10 +1503,17 @@ export class DatabaseStorage implements IStorage {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30); // Due in 30 days
 
+      // Get the "Fornecedores" category ID
+      const [suppliersCategory] = await tx
+        .select({ id: expenseCategories.id })
+        .from(expenseCategories)
+        .where(eq(expenseCategories.name, 'Fornecedores'));
+
       await tx
         .insert(accountsPayable)
         .values({
           supplierId: purchaseOrder.supplierId,
+          categoryId: suppliersCategory?.id || 2, // Default to Fornecedores category (ID: 2)
           userId: purchaseOrder.userId,
           description: `Pedido de Compra ${orderNumber}`,
           totalAmount: totalAmount.toFixed(2),
