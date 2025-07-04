@@ -166,3 +166,6 @@ Changelog:
 - July 04, 2025. Created PostgreSQL database and ran Drizzle migrations to create all required tables
 - July 04, 2025. Fixed supplier dropdown issue in purchase orders by resolving missing database tables
 - July 04, 2025. Seeded sample supplier data for testing purchase order functionality
+- July 04, 2025. Completed migration from Replit Agent to Replit environment, fixed missing purchase order database tables
+- July 04, 2025. Created and executed scripts to create missing purchase_orders, purchase_order_items, purchase_receipts, and purchase_receipt_items tables
+- July 04, 2025. Fixed purchase order creation error by ensuring all required database tables exist
