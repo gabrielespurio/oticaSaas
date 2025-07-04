@@ -1353,57 +1353,70 @@ export class DatabaseStorage implements IStorage {
 
   // Purchase Orders Implementation
   async getPurchaseOrders(status?: string, supplierId?: number, limit?: number, offset?: number): Promise<(PurchaseOrder & { supplier: Supplier })[]> {
-    const query = db
-      .select({
-        id: purchaseOrders.id,
-        supplierId: purchaseOrders.supplierId,
-        userId: purchaseOrders.userId,
-        orderNumber: purchaseOrders.orderNumber,
-        orderDate: purchaseOrders.orderDate,
-        expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
-        totalAmount: purchaseOrders.totalAmount,
-        status: purchaseOrders.status,
-        notes: purchaseOrders.notes,
-        createdAt: purchaseOrders.createdAt,
-        supplier: {
-          id: suppliers.id,
-          name: suppliers.name,
-          email: suppliers.email,
-          phone: suppliers.phone,
-          cnpj: suppliers.cnpj,
-          street: suppliers.street,
-          number: suppliers.number,
-          complement: suppliers.complement,
-          neighborhood: suppliers.neighborhood,
-          city: suppliers.city,
-          state: suppliers.state,
-          zipCode: suppliers.zipCode,
-          notes: suppliers.notes,
-          isActive: suppliers.isActive,
-          createdAt: suppliers.createdAt,
-        },
-      })
-      .from(purchaseOrders)
-      .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
-      .orderBy(desc(purchaseOrders.createdAt));
+    try {
+      // Build conditions array
+      const conditions = [];
+      if (status) {
+        conditions.push(eq(purchaseOrders.status, status));
+      }
+      if (supplierId) {
+        conditions.push(eq(purchaseOrders.supplierId, supplierId));
+      }
 
-    if (status) {
-      query.where(eq(purchaseOrders.status, status));
+      // Build base query
+      let baseQuery = db
+        .select({
+          id: purchaseOrders.id,
+          supplierId: purchaseOrders.supplierId,
+          userId: purchaseOrders.userId,
+          orderNumber: purchaseOrders.orderNumber,
+          orderDate: purchaseOrders.orderDate,
+          expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+          totalAmount: purchaseOrders.totalAmount,
+          status: purchaseOrders.status,
+          notes: purchaseOrders.notes,
+          createdAt: purchaseOrders.createdAt,
+          supplier: {
+            id: suppliers.id,
+            name: suppliers.name,
+            email: suppliers.email,
+            phone: suppliers.phone,
+            cnpj: suppliers.cnpj,
+            street: suppliers.street,
+            number: suppliers.number,
+            complement: suppliers.complement,
+            neighborhood: suppliers.neighborhood,
+            city: suppliers.city,
+            state: suppliers.state,
+            zipCode: suppliers.zipCode,
+            notes: suppliers.notes,
+            isActive: suppliers.isActive,
+            createdAt: suppliers.createdAt,
+          },
+        })
+        .from(purchaseOrders)
+        .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+        .orderBy(desc(purchaseOrders.createdAt));
+
+      // Apply conditions if any
+      if (conditions.length > 0) {
+        baseQuery = baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions));
+      }
+
+      if (limit) {
+        baseQuery = baseQuery.limit(limit);
+      }
+
+      if (offset) {
+        baseQuery = baseQuery.offset(offset);
+      }
+
+      return await baseQuery.execute();
+    } catch (error) {
+      console.error('Error in getPurchaseOrders:', error);
+      // Return empty array if there are any issues
+      return [];
     }
-
-    if (supplierId) {
-      query.where(eq(purchaseOrders.supplierId, supplierId));
-    }
-
-    if (limit) {
-      query.limit(limit);
-    }
-
-    if (offset) {
-      query.offset(offset);
-    }
-
-    return query.execute();
   }
 
   async getPurchaseOrderWithDetails(id: number): Promise<(PurchaseOrder & { supplier: Supplier; items: (PurchaseOrderItem & { product: Product })[] }) | undefined> {

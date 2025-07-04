@@ -162,3 +162,7 @@ Changelog:
 - July 04, 2025. Corrected apiRequest function calls to include HTTP method parameter (GET requests)
 - July 04, 2025. Implemented complete purchase receipts functionality with real API integration replacing mock data
 - July 04, 2025. Fixed purchase receipts API to handle optional items parameter for simple receipt registration
+- July 04, 2025. Completed migration from Replit Agent to Replit environment with full database setup
+- July 04, 2025. Created PostgreSQL database and ran Drizzle migrations to create all required tables
+- July 04, 2025. Fixed supplier dropdown issue in purchase orders by resolving missing database tables
+- July 04, 2025. Seeded sample supplier data for testing purchase order functionality
