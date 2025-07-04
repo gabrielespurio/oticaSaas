@@ -112,30 +112,26 @@ export default function AccountsPayablePage() {
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["/api/accounts-payable"],
-    queryFn: () => apiRequest("/api/accounts-payable"),
+    queryFn: () => apiRequest("GET", "/api/accounts-payable"),
   });
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["/api/suppliers"],
-    queryFn: () => apiRequest("/api/suppliers"),
+    queryFn: () => apiRequest("GET", "/api/suppliers"),
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/expense-categories"],
-    queryFn: () => apiRequest("/api/expense-categories"),
+    queryFn: () => apiRequest("GET", "/api/expense-categories"),
   });
 
   const { data: stats } = useQuery({
     queryKey: ["/api/accounts-payable/stats"],
-    queryFn: () => apiRequest("/api/accounts-payable/stats"),
+    queryFn: () => apiRequest("GET", "/api/accounts-payable/stats"),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("/api/accounts-payable", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: FormData) => apiRequest("POST", "/api/accounts-payable", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable"] });
       queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable/stats"] });
