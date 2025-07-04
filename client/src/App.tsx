@@ -19,6 +19,10 @@ import Quotes from "@/pages/quotes";
 import ReceivablesPage from "@/pages/financial/receivables";
 import AccountsPayablePage from "@/pages/accounts-payable";
 import PurchasesPage from "@/pages/purchases";
+import PurchaseOrdersPage from "@/pages/purchases/orders";
+import ReceiptsPage from "@/pages/purchases/receipts-page";
+import SuppliersPage from "@/pages/purchases/suppliers-page";
+import PurchaseReportsPage from "@/pages/purchases/reports-page";
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -59,6 +63,26 @@ function Router() {
       <Route path="/purchases">
         <ProtectedRoute>
           <PurchasesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/purchases/orders">
+        <ProtectedRoute>
+          <PurchaseOrdersPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/purchases/receipts">
+        <ProtectedRoute>
+          <ReceiptsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/purchases/suppliers">
+        <ProtectedRoute>
+          <SuppliersPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/purchases/reports">
+        <ProtectedRoute>
+          <PurchaseReportsPage />
         </ProtectedRoute>
       </Route>
 
