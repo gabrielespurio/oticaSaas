@@ -157,7 +157,7 @@ export interface IStorage {
   deletePurchaseOrder(id: number): Promise<boolean>;
 
   // Purchase Receipts
-  getPurchaseReceipts(purchaseOrderId?: number, limit?: number, offset?: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder })[]>;
+  getPurchaseReceipts(purchaseOrderId?: number, limit?: number, offset?: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder & { supplier: Supplier } })[]>;
   getPurchaseReceiptWithDetails(id: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder; items: (PurchaseReceiptItem & { purchaseOrderItem: PurchaseOrderItem & { product: Product } })[] }) | undefined>;
   createPurchaseReceipt(receipt: InsertPurchaseReceipt, items: InsertPurchaseReceiptItem[]): Promise<PurchaseReceipt>;
 
@@ -1578,7 +1578,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Purchase Receipts Implementation
-  async getPurchaseReceipts(purchaseOrderId?: number, limit?: number, offset?: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder })[]> {
+  async getPurchaseReceipts(purchaseOrderId?: number, limit?: number, offset?: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder & { supplier: Supplier } })[]> {
     const query = db
       .select({
         id: purchaseReceipts.id,
@@ -1599,10 +1599,28 @@ export class DatabaseStorage implements IStorage {
           status: purchaseOrders.status,
           notes: purchaseOrders.notes,
           createdAt: purchaseOrders.createdAt,
+          supplier: {
+            id: suppliers.id,
+            name: suppliers.name,
+            email: suppliers.email,
+            phone: suppliers.phone,
+            cnpj: suppliers.cnpj,
+            street: suppliers.street,
+            number: suppliers.number,
+            complement: suppliers.complement,
+            neighborhood: suppliers.neighborhood,
+            city: suppliers.city,
+            state: suppliers.state,
+            zipCode: suppliers.zipCode,
+            notes: suppliers.notes,
+            isActive: suppliers.isActive,
+            createdAt: suppliers.createdAt,
+          },
         },
       })
       .from(purchaseReceipts)
       .innerJoin(purchaseOrders, eq(purchaseReceipts.purchaseOrderId, purchaseOrders.id))
+      .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
       .orderBy(desc(purchaseReceipts.createdAt));
 
     if (purchaseOrderId) {
