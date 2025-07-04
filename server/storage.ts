@@ -1763,6 +1763,49 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      // Get purchase order details to create accounts payable entry
+      const [purchaseOrderData] = await tx
+        .select({
+          id: purchaseOrders.id,
+          supplierId: purchaseOrders.supplierId,
+          orderNumber: purchaseOrders.orderNumber,
+          totalAmount: purchaseOrders.totalAmount,
+          expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+          supplier: {
+            name: suppliers.name,
+          },
+        })
+        .from(purchaseOrders)
+        .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+        .where(eq(purchaseOrders.id, purchaseReceipt.purchaseOrderId));
+
+      if (purchaseOrderData) {
+        // Create accounts payable entry for the received purchase
+        const description = `Recebimento do Pedido de Compra ${purchaseOrderData.orderNumber} - ${purchaseOrderData.supplier.name}`;
+        
+        // Calculate due date (30 days from receipt date if no expected delivery date)
+        const dueDate = purchaseOrderData.expectedDeliveryDate 
+          ? new Date(purchaseOrderData.expectedDeliveryDate.getTime() + (30 * 24 * 60 * 60 * 1000)) // 30 days after expected delivery
+          : new Date(receipt.receiptDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days after receipt
+
+        await tx
+          .insert(accountsPayable)
+          .values({
+            supplierId: purchaseOrderData.supplierId,
+            userId: purchaseReceipt.userId,
+            description,
+            totalAmount: purchaseOrderData.totalAmount,
+            paidAmount: "0",
+            remainingAmount: purchaseOrderData.totalAmount,
+            dueDate,
+            status: "pending",
+            notes: `Criado automaticamente a partir do recebimento ${receiptNumber}`,
+            installments: 1,
+            currentInstallment: 1,
+            isRecurring: false,
+          });
+      }
+
       return [purchaseReceipt];
     });
 
