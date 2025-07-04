@@ -15,7 +15,7 @@ import {
   type PurchaseReceiptItem, type InsertPurchaseReceiptItem, type SupplierCategory, type InsertSupplierCategory
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, count, sql, like, or, ilike } from "drizzle-orm";
+import { eq, desc, and, gte, lte, count, sql, like, or, ilike, sum } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -1349,6 +1349,495 @@ export class DatabaseStorage implements IStorage {
       upcomingPayments: upcomingPayments.count,
       averagePaymentDelay: 0, // This would require more complex calculation
     };
+  }
+
+  // Purchase Orders Implementation
+  async getPurchaseOrders(status?: string, supplierId?: number, limit?: number, offset?: number): Promise<(PurchaseOrder & { supplier: Supplier })[]> {
+    const query = db
+      .select({
+        id: purchaseOrders.id,
+        supplierId: purchaseOrders.supplierId,
+        userId: purchaseOrders.userId,
+        orderNumber: purchaseOrders.orderNumber,
+        orderDate: purchaseOrders.orderDate,
+        expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+        totalAmount: purchaseOrders.totalAmount,
+        status: purchaseOrders.status,
+        notes: purchaseOrders.notes,
+        createdAt: purchaseOrders.createdAt,
+        supplier: {
+          id: suppliers.id,
+          name: suppliers.name,
+          email: suppliers.email,
+          phone: suppliers.phone,
+          cnpj: suppliers.cnpj,
+          street: suppliers.street,
+          number: suppliers.number,
+          complement: suppliers.complement,
+          neighborhood: suppliers.neighborhood,
+          city: suppliers.city,
+          state: suppliers.state,
+          zipCode: suppliers.zipCode,
+          notes: suppliers.notes,
+          isActive: suppliers.isActive,
+          createdAt: suppliers.createdAt,
+        },
+      })
+      .from(purchaseOrders)
+      .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+      .orderBy(desc(purchaseOrders.createdAt));
+
+    if (status) {
+      query.where(eq(purchaseOrders.status, status));
+    }
+
+    if (supplierId) {
+      query.where(eq(purchaseOrders.supplierId, supplierId));
+    }
+
+    if (limit) {
+      query.limit(limit);
+    }
+
+    if (offset) {
+      query.offset(offset);
+    }
+
+    return query.execute();
+  }
+
+  async getPurchaseOrderWithDetails(id: number): Promise<(PurchaseOrder & { supplier: Supplier; items: (PurchaseOrderItem & { product: Product })[] }) | undefined> {
+    const orderQuery = db
+      .select({
+        id: purchaseOrders.id,
+        supplierId: purchaseOrders.supplierId,
+        userId: purchaseOrders.userId,
+        orderNumber: purchaseOrders.orderNumber,
+        orderDate: purchaseOrders.orderDate,
+        expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+        totalAmount: purchaseOrders.totalAmount,
+        status: purchaseOrders.status,
+        notes: purchaseOrders.notes,
+        createdAt: purchaseOrders.createdAt,
+        supplier: {
+          id: suppliers.id,
+          name: suppliers.name,
+          email: suppliers.email,
+          phone: suppliers.phone,
+          cnpj: suppliers.cnpj,
+          street: suppliers.street,
+          number: suppliers.number,
+          complement: suppliers.complement,
+          neighborhood: suppliers.neighborhood,
+          city: suppliers.city,
+          state: suppliers.state,
+          zipCode: suppliers.zipCode,
+          notes: suppliers.notes,
+          isActive: suppliers.isActive,
+          createdAt: suppliers.createdAt,
+        },
+      })
+      .from(purchaseOrders)
+      .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+      .where(eq(purchaseOrders.id, id));
+
+    const [order] = await orderQuery.execute();
+    if (!order) return undefined;
+
+    const items = await db
+      .select({
+        id: purchaseOrderItems.id,
+        purchaseOrderId: purchaseOrderItems.purchaseOrderId,
+        productId: purchaseOrderItems.productId,
+        quantity: purchaseOrderItems.quantity,
+        unitPrice: purchaseOrderItems.unitPrice,
+        totalPrice: purchaseOrderItems.totalPrice,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
+        product: {
+          id: products.id,
+          name: products.name,
+          sku: products.sku,
+          barcode: products.barcode,
+          categoryId: products.categoryId,
+          brand: products.brand,
+          model: products.model,
+          color: products.color,
+          size: products.size,
+          description: products.description,
+          costPrice: products.costPrice,
+          salePrice: products.salePrice,
+          stockQuantity: products.stockQuantity,
+          minStockLevel: products.minStockLevel,
+          isActive: products.isActive,
+          createdAt: products.createdAt,
+        },
+      })
+      .from(purchaseOrderItems)
+      .innerJoin(products, eq(purchaseOrderItems.productId, products.id))
+      .where(eq(purchaseOrderItems.purchaseOrderId, id));
+
+    return {
+      ...order,
+      items,
+    };
+  }
+
+  async createPurchaseOrder(order: InsertPurchaseOrder, items: InsertPurchaseOrderItem[]): Promise<PurchaseOrder> {
+    const [newOrder] = await db.transaction(async (tx) => {
+      // Generate unique order number
+      const orderNumber = `PO-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+      
+      // Calculate total amount
+      const totalAmount = items.reduce((sum, item) => sum + (item.quantity * Number(item.unitPrice)), 0);
+
+      // Insert purchase order
+      const [purchaseOrder] = await tx
+        .insert(purchaseOrders)
+        .values({
+          ...order,
+          orderNumber,
+          totalAmount: totalAmount.toFixed(2),
+        })
+        .returning();
+
+      // Insert purchase order items
+      if (items.length > 0) {
+        await tx
+          .insert(purchaseOrderItems)
+          .values(
+            items.map((item) => ({
+              ...item,
+              purchaseOrderId: purchaseOrder.id,
+              totalPrice: (item.quantity * Number(item.unitPrice)).toFixed(2),
+            }))
+          );
+      }
+
+      return [purchaseOrder];
+    });
+
+    return newOrder;
+  }
+
+  async updatePurchaseOrder(id: number, order: Partial<InsertPurchaseOrder>, items?: InsertPurchaseOrderItem[]): Promise<PurchaseOrder | undefined> {
+    const [updatedOrder] = await db.transaction(async (tx) => {
+      // Update purchase order
+      const [purchaseOrder] = await tx
+        .update(purchaseOrders)
+        .set(order)
+        .where(eq(purchaseOrders.id, id))
+        .returning();
+
+      if (!purchaseOrder) return [undefined];
+
+      // Update items if provided
+      if (items) {
+        // Delete existing items
+        await tx.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
+
+        // Insert new items
+        if (items.length > 0) {
+          await tx
+            .insert(purchaseOrderItems)
+            .values(
+              items.map((item) => ({
+                ...item,
+                purchaseOrderId: id,
+                totalPrice: (item.quantity * Number(item.unitPrice)).toFixed(2),
+              }))
+            );
+        }
+
+        // Recalculate total amount
+        const totalAmount = items.reduce((sum, item) => sum + (item.quantity * Number(item.unitPrice)), 0);
+        await tx
+          .update(purchaseOrders)
+          .set({ totalAmount: totalAmount.toFixed(2) })
+          .where(eq(purchaseOrders.id, id));
+      }
+
+      return [purchaseOrder];
+    });
+
+    return updatedOrder;
+  }
+
+  async deletePurchaseOrder(id: number): Promise<boolean> {
+    try {
+      await db.transaction(async (tx) => {
+        // Delete purchase order items first
+        await tx.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
+        
+        // Delete purchase order
+        await tx.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Purchase Receipts Implementation
+  async getPurchaseReceipts(purchaseOrderId?: number, limit?: number, offset?: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder })[]> {
+    const query = db
+      .select({
+        id: purchaseReceipts.id,
+        purchaseOrderId: purchaseReceipts.purchaseOrderId,
+        userId: purchaseReceipts.userId,
+        receiptNumber: purchaseReceipts.receiptNumber,
+        receiptDate: purchaseReceipts.receiptDate,
+        notes: purchaseReceipts.notes,
+        createdAt: purchaseReceipts.createdAt,
+        purchaseOrder: {
+          id: purchaseOrders.id,
+          supplierId: purchaseOrders.supplierId,
+          userId: purchaseOrders.userId,
+          orderNumber: purchaseOrders.orderNumber,
+          orderDate: purchaseOrders.orderDate,
+          expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+          totalAmount: purchaseOrders.totalAmount,
+          status: purchaseOrders.status,
+          notes: purchaseOrders.notes,
+          createdAt: purchaseOrders.createdAt,
+        },
+      })
+      .from(purchaseReceipts)
+      .innerJoin(purchaseOrders, eq(purchaseReceipts.purchaseOrderId, purchaseOrders.id))
+      .orderBy(desc(purchaseReceipts.createdAt));
+
+    if (purchaseOrderId) {
+      query.where(eq(purchaseReceipts.purchaseOrderId, purchaseOrderId));
+    }
+
+    if (limit) {
+      query.limit(limit);
+    }
+
+    if (offset) {
+      query.offset(offset);
+    }
+
+    return query.execute();
+  }
+
+  async getPurchaseReceiptWithDetails(id: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder; items: (PurchaseReceiptItem & { purchaseOrderItem: PurchaseOrderItem & { product: Product } })[] }) | undefined> {
+    const receiptQuery = db
+      .select({
+        id: purchaseReceipts.id,
+        purchaseOrderId: purchaseReceipts.purchaseOrderId,
+        userId: purchaseReceipts.userId,
+        receiptNumber: purchaseReceipts.receiptNumber,
+        receiptDate: purchaseReceipts.receiptDate,
+        notes: purchaseReceipts.notes,
+        createdAt: purchaseReceipts.createdAt,
+        purchaseOrder: {
+          id: purchaseOrders.id,
+          supplierId: purchaseOrders.supplierId,
+          userId: purchaseOrders.userId,
+          orderNumber: purchaseOrders.orderNumber,
+          orderDate: purchaseOrders.orderDate,
+          expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+          totalAmount: purchaseOrders.totalAmount,
+          status: purchaseOrders.status,
+          notes: purchaseOrders.notes,
+          createdAt: purchaseOrders.createdAt,
+        },
+      })
+      .from(purchaseReceipts)
+      .innerJoin(purchaseOrders, eq(purchaseReceipts.purchaseOrderId, purchaseOrders.id))
+      .where(eq(purchaseReceipts.id, id));
+
+    const [receipt] = await receiptQuery.execute();
+    if (!receipt) return undefined;
+
+    const items = await db
+      .select({
+        id: purchaseReceiptItems.id,
+        receiptId: purchaseReceiptItems.receiptId,
+        purchaseOrderItemId: purchaseReceiptItems.purchaseOrderItemId,
+        receivedQuantity: purchaseReceiptItems.receivedQuantity,
+        notes: purchaseReceiptItems.notes,
+        purchaseOrderItem: {
+          id: purchaseOrderItems.id,
+          purchaseOrderId: purchaseOrderItems.purchaseOrderId,
+          productId: purchaseOrderItems.productId,
+          quantity: purchaseOrderItems.quantity,
+          unitPrice: purchaseOrderItems.unitPrice,
+          totalPrice: purchaseOrderItems.totalPrice,
+          receivedQuantity: purchaseOrderItems.receivedQuantity,
+          product: {
+            id: products.id,
+            name: products.name,
+            sku: products.sku,
+            barcode: products.barcode,
+            categoryId: products.categoryId,
+            brand: products.brand,
+            model: products.model,
+            color: products.color,
+            size: products.size,
+            description: products.description,
+            costPrice: products.costPrice,
+            salePrice: products.salePrice,
+            stockQuantity: products.stockQuantity,
+            minStockLevel: products.minStockLevel,
+            isActive: products.isActive,
+            createdAt: products.createdAt,
+          },
+        },
+      })
+      .from(purchaseReceiptItems)
+      .innerJoin(purchaseOrderItems, eq(purchaseReceiptItems.purchaseOrderItemId, purchaseOrderItems.id))
+      .innerJoin(products, eq(purchaseOrderItems.productId, products.id))
+      .where(eq(purchaseReceiptItems.receiptId, id));
+
+    return {
+      ...receipt,
+      items,
+    };
+  }
+
+  async createPurchaseReceipt(receipt: InsertPurchaseReceipt, items: InsertPurchaseReceiptItem[]): Promise<PurchaseReceipt> {
+    const [newReceipt] = await db.transaction(async (tx) => {
+      // Generate unique receipt number
+      const receiptNumber = `PR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+      
+      // Insert purchase receipt
+      const [purchaseReceipt] = await tx
+        .insert(purchaseReceipts)
+        .values({
+          ...receipt,
+          receiptNumber,
+        })
+        .returning();
+
+      // Insert purchase receipt items
+      if (items.length > 0) {
+        await tx
+          .insert(purchaseReceiptItems)
+          .values(
+            items.map((item) => ({
+              ...item,
+              receiptId: purchaseReceipt.id,
+            }))
+          );
+
+        // Update received quantities in purchase order items
+        for (const item of items) {
+          await tx
+            .update(purchaseOrderItems)
+            .set({
+              receivedQuantity: sql`${purchaseOrderItems.receivedQuantity} + ${item.receivedQuantity}`,
+            })
+            .where(eq(purchaseOrderItems.id, item.purchaseOrderItemId));
+        }
+      }
+
+      return [purchaseReceipt];
+    });
+
+    return newReceipt;
+  }
+
+  // Supplier Categories Implementation
+  async getSupplierCategories(): Promise<SupplierCategory[]> {
+    return await db.select().from(supplierCategories).orderBy(supplierCategories.name);
+  }
+
+  async createSupplierCategory(category: InsertSupplierCategory): Promise<SupplierCategory> {
+    const [newCategory] = await db.insert(supplierCategories).values(category).returning();
+    return newCategory;
+  }
+
+  // Purchase Reports Implementation
+  async getPurchaseReportSummary(startDate: string, endDate: string, supplierId?: number): Promise<{
+    totalOrders: number;
+    totalAmount: string;
+    averageOrderValue: string;
+    pendingOrders: number;
+    receivedOrders: number;
+  }> {
+    const conditions = [
+      gte(purchaseOrders.orderDate, new Date(startDate)),
+      lte(purchaseOrders.orderDate, new Date(endDate)),
+    ];
+
+    if (supplierId) {
+      conditions.push(eq(purchaseOrders.supplierId, supplierId));
+    }
+
+    const [summary] = await db
+      .select({
+        totalOrders: count(purchaseOrders.id),
+        totalAmount: sum(purchaseOrders.totalAmount),
+        pendingOrders: sum(sql`CASE WHEN ${purchaseOrders.status} = 'pending' THEN 1 ELSE 0 END`),
+        receivedOrders: sum(sql`CASE WHEN ${purchaseOrders.status} = 'received' THEN 1 ELSE 0 END`),
+      })
+      .from(purchaseOrders)
+      .where(and(...conditions));
+
+    const totalAmount = summary.totalAmount || '0';
+    const totalOrders = summary.totalOrders || 0;
+    const averageOrderValue = totalOrders > 0 ? (Number(totalAmount) / totalOrders).toFixed(2) : '0';
+
+    return {
+      totalOrders,
+      totalAmount,
+      averageOrderValue,
+      pendingOrders: summary.pendingOrders || 0,
+      receivedOrders: summary.receivedOrders || 0,
+    };
+  }
+
+  async getPurchasesBySupplierReport(startDate: string, endDate: string): Promise<{ supplier: string; totalAmount: string; orderCount: number }[]> {
+    const results = await db
+      .select({
+        supplier: suppliers.name,
+        totalAmount: sum(purchaseOrders.totalAmount),
+        orderCount: count(purchaseOrders.id),
+      })
+      .from(purchaseOrders)
+      .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+      .where(
+        and(
+          gte(purchaseOrders.orderDate, new Date(startDate)),
+          lte(purchaseOrders.orderDate, new Date(endDate))
+        )
+      )
+      .groupBy(suppliers.name)
+      .orderBy(desc(sum(purchaseOrders.totalAmount)));
+
+    return results.map(result => ({
+      supplier: result.supplier,
+      totalAmount: result.totalAmount || '0',
+      orderCount: result.orderCount || 0,
+    }));
+  }
+
+  async getPurchasesByCategoryReport(startDate: string, endDate: string): Promise<{ category: string; totalAmount: string; orderCount: number }[]> {
+    const results = await db
+      .select({
+        category: productCategories.name,
+        totalAmount: sum(purchaseOrderItems.totalPrice),
+        orderCount: count(sql`DISTINCT ${purchaseOrders.id}`),
+      })
+      .from(purchaseOrders)
+      .innerJoin(purchaseOrderItems, eq(purchaseOrders.id, purchaseOrderItems.purchaseOrderId))
+      .innerJoin(products, eq(purchaseOrderItems.productId, products.id))
+      .innerJoin(productCategories, eq(products.categoryId, productCategories.id))
+      .where(
+        and(
+          gte(purchaseOrders.orderDate, new Date(startDate)),
+          lte(purchaseOrders.orderDate, new Date(endDate))
+        )
+      )
+      .groupBy(productCategories.name)
+      .orderBy(desc(sum(purchaseOrderItems.totalPrice)));
+
+    return results.map(result => ({
+      category: result.category,
+      totalAmount: result.totalAmount || '0',
+      orderCount: result.orderCount || 0,
+    }));
   }
 }
 

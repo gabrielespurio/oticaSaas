@@ -107,40 +107,45 @@ export default function PurchaseOrdersTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Mock data for now since API is not implemented yet
-  const orders: PurchaseOrder[] = [
-    {
-      id: 1,
-      supplierId: 1,
-      orderNumber: "PO-2024-001",
-      orderDate: "2024-01-15",
-      expectedDeliveryDate: "2024-01-25",
-      totalAmount: "2500.00",
-      status: "pending",
-      notes: "Pedido urgente para reposição de estoque",
-      supplier: { id: 1, name: "Óticas Brasil Ltda" }
+  // Fetch purchase orders from API
+  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+    queryKey: ["/api/purchase-orders"],
+    queryFn: () => apiRequest("/api/purchase-orders"),
+  });
+
+  // Fetch suppliers from API
+  const { data: suppliers = [], isLoading: suppliersLoading } = useQuery({
+    queryKey: ["/api/suppliers"],
+    queryFn: () => apiRequest("/api/suppliers"),
+  });
+
+  // Fetch products from API
+  const { data: products = [], isLoading: productsLoading } = useQuery({
+    queryKey: ["/api/products"],
+    queryFn: () => apiRequest("/api/products"),
+  });
+
+  // Create purchase order mutation
+  const createPurchaseOrderMutation = useMutation({
+    mutationFn: (data: FormData) => 
+      apiRequest("POST", "/api/purchase-orders", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
+      toast({
+        title: "Sucesso",
+        description: "Pedido de compra criado com sucesso!",
+      });
+      setIsCreateDialogOpen(false);
+      reset();
     },
-    {
-      id: 2,
-      supplierId: 2,
-      orderNumber: "PO-2024-002",
-      orderDate: "2024-01-18",
-      expectedDeliveryDate: "2024-01-28",
-      totalAmount: "1850.00",
-      status: "partially_received",
-      supplier: { id: 2, name: "Visão Clara Fornecedora" }
-    }
-  ];
-
-  const suppliers: Supplier[] = [
-    { id: 1, name: "Óticas Brasil Ltda", cnpj: "12.345.678/0001-90" },
-    { id: 2, name: "Visão Clara Fornecedora", cnpj: "98.765.432/0001-10" },
-  ];
-
-  const products: Product[] = [
-    { id: 1, name: "Armação Ray-Ban RB3025", sku: "RB3025-001", salePrice: "450.00" },
-    { id: 2, name: "Lente Zeiss Single Vision", sku: "ZEISS-SV-001", salePrice: "180.00" },
-  ];
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao criar pedido de compra",
+        variant: "destructive",
+      });
+    },
+  });
 
   const {
     register,
@@ -195,14 +200,7 @@ export default function PurchaseOrdersTab() {
   };
 
   const onSubmit = async (data: FormData) => {
-    // Mock implementation - will be replaced with actual API call
-    console.log("Creating purchase order:", data);
-    toast({
-      title: "Sucesso",
-      description: "Pedido de compra criado com sucesso!",
-    });
-    setIsCreateDialogOpen(false);
-    reset();
+    createPurchaseOrderMutation.mutate(data);
   };
 
   const filteredOrders = orders.filter((order: PurchaseOrder) => {

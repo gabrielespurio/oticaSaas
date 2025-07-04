@@ -676,10 +676,12 @@ export type InsertPaymentHistory = z.infer<typeof insertPaymentHistorySchema>;
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
   id: true,
   orderNumber: true,
+  orderDate: true,
+  totalAmount: true,
   createdAt: true,
 }).extend({
-  orderDate: z.union([z.string(), z.date()]).transform((val) => 
-    typeof val === 'string' ? new Date(val) : val
+  orderDate: z.union([z.string(), z.date()]).optional().transform((val) => 
+    !val ? new Date() : typeof val === 'string' ? new Date(val) : val
   ),
   expectedDeliveryDate: z.union([z.string(), z.date(), z.null()]).optional().transform((val) => 
     !val ? null : typeof val === 'string' ? new Date(val) : val
