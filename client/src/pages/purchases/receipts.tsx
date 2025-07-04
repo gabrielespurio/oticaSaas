@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -11,43 +13,99 @@ import { Plus, Search, Eye, Package, Calendar, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+// Form validation schema
+const receiptSchema = z.object({
+  purchaseOrderId: z.number().min(1, "Selecione um pedido de compra"),
+  receiptDate: z.string().min(1, "Data do recebimento é obrigatória"),
+});
+
+type ReceiptFormData = z.infer<typeof receiptSchema>;
 
 interface Receipt {
   id: number;
   receiptNumber: string;
   receiptDate: string;
-  purchaseOrderNumber: string;
-  supplier: string;
-  totalItems: number;
-  status: string;
+  purchaseOrderId: number;
+  userId: number;
+  notes?: string;
+  createdAt: string;
+  purchaseOrder: {
+    id: number;
+    orderNumber: string;
+    supplier: {
+      name: string;
+    };
+  };
+}
+
+interface PurchaseOrder {
+  id: number;
+  orderNumber: string;
+  supplier: {
+    name: string;
+  };
 }
 
 export default function ReceiptsTab() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Mock data for demonstration
-  const receipts: Receipt[] = [
-    {
-      id: 1,
-      receiptNumber: "REC-2024-001",
-      receiptDate: "2024-01-20",
-      purchaseOrderNumber: "PO-2024-001",
-      supplier: "Óticas Brasil Ltda",
-      totalItems: 15,
-      status: "completed"
+  // Fetch purchase receipts from API
+  const { data: receipts = [], isLoading: receiptsLoading } = useQuery({
+    queryKey: ["/api/purchase-receipts"],
+    queryFn: () => apiRequest("GET", "/api/purchase-receipts"),
+  });
+
+  // Fetch purchase orders for the dropdown
+  const { data: purchaseOrders = [], isLoading: ordersLoading } = useQuery({
+    queryKey: ["/api/purchase-orders"],
+    queryFn: () => apiRequest("GET", "/api/purchase-orders"),
+  });
+
+  // Create receipt mutation
+  const createReceiptMutation = useMutation({
+    mutationFn: (data: ReceiptFormData) => 
+      apiRequest("POST", "/api/purchase-receipts", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-receipts"] });
+      toast({
+        title: "Sucesso",
+        description: "Recebimento registrado com sucesso!",
+      });
+      setIsCreateDialogOpen(false);
+      reset();
     },
-    {
-      id: 2,
-      receiptNumber: "REC-2024-002",
-      receiptDate: "2024-01-22",
-      purchaseOrderNumber: "PO-2024-002",
-      supplier: "Visão Clara Fornecedora",
-      totalItems: 8,
-      status: "partial"
-    }
-  ];
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao registrar recebimento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ReceiptFormData>({
+    resolver: zodResolver(receiptSchema),
+    defaultValues: {
+      receiptDate: new Date().toISOString().split('T')[0],
+    },
+  });
+
+  const onSubmit = async (data: ReceiptFormData) => {
+    createReceiptMutation.mutate(data);
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -60,10 +118,10 @@ export default function ReceiptsTab() {
     }
   };
 
-  const filteredReceipts = receipts.filter((receipt) =>
+  const filteredReceipts = receipts.filter((receipt: Receipt) =>
     receipt.receiptNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    receipt.purchaseOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    receipt.supplier.toLowerCase().includes(searchQuery.toLowerCase())
+    receipt.purchaseOrder.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    receipt.purchaseOrder.supplier.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -85,32 +143,49 @@ export default function ReceiptsTab() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
                 <Label htmlFor="purchaseOrder">Pedido de Compra</Label>
-                <Select>
+                <Select 
+                  onValueChange={(value) => setValue("purchaseOrderId", parseInt(value))}
+                  disabled={ordersLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um pedido" />
+                    <SelectValue placeholder={ordersLoading ? "Carregando..." : "Selecione um pedido"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="po1">PO-2024-001 - Óticas Brasil Ltda</SelectItem>
-                    <SelectItem value="po2">PO-2024-002 - Visão Clara Fornecedora</SelectItem>
+                    {purchaseOrders.map((order: PurchaseOrder) => (
+                      <SelectItem key={order.id} value={order.id.toString()}>
+                        {order.orderNumber} - {order.supplier.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {errors.purchaseOrderId && (
+                  <p className="text-sm text-red-500">{errors.purchaseOrderId.message}</p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="receiptDate">Data do Recebimento</Label>
-                <Input type="date" />
+                <Input 
+                  type="date" 
+                  {...register("receiptDate")}
+                />
+                {errors.receiptDate && (
+                  <p className="text-sm text-red-500">{errors.receiptDate.message}</p>
+                )}
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button>Registrar</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Registrando..." : "Registrar"}
+                </Button>
               </div>
-            </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -192,25 +267,35 @@ export default function ReceiptsTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReceipts.map((receipt) => (
-                  <TableRow key={receipt.id}>
-                    <TableCell className="font-medium">
-                      {receipt.receiptNumber}
-                    </TableCell>
-                    <TableCell>{receipt.purchaseOrderNumber}</TableCell>
-                    <TableCell>{receipt.supplier}</TableCell>
-                    <TableCell>
-                      {format(new Date(receipt.receiptDate), "dd/MM/yyyy", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>{receipt.totalItems} itens</TableCell>
-                    <TableCell>{getStatusBadge(receipt.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                {filteredReceipts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      {receiptsLoading ? "Carregando recebimentos..." : "Nenhum recebimento encontrado"}
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredReceipts.map((receipt: Receipt) => (
+                    <TableRow key={receipt.id}>
+                      <TableCell className="font-medium">
+                        {receipt.receiptNumber}
+                      </TableCell>
+                      <TableCell>{receipt.purchaseOrder.orderNumber}</TableCell>
+                      <TableCell>{receipt.purchaseOrder.supplier.name}</TableCell>
+                      <TableCell>
+                        {format(new Date(receipt.receiptDate), "dd/MM/yyyy", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell>
+                        <Badge className="bg-green-500">Recebido</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
