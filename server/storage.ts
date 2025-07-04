@@ -1046,8 +1046,26 @@ export class DatabaseStorage implements IStorage {
     return category || undefined;
   }
 
+  // Helper function to update overdue accounts
+  private async updateOverdueAccountsPayable(): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    await db
+      .update(accountsPayable)
+      .set({ status: 'overdue' })
+      .where(
+        and(
+          eq(accountsPayable.status, 'pending'),
+          lt(accountsPayable.dueDate, today)
+        )
+      );
+  }
+
   // Accounts Payable
   async getAccountsPayable(limit = 50, offset = 0): Promise<(AccountPayable & { supplier?: Supplier; category?: ExpenseCategory })[]> {
+    // Update overdue accounts before fetching
+    await this.updateOverdueAccountsPayable();
     return await db.select({
       id: accountsPayable.id,
       supplierId: accountsPayable.supplierId,

@@ -177,3 +177,6 @@ Changelog:
 - July 04, 2025. Completed comprehensive module synchronization analysis - all 12 modules working correctly with Neon database
 - July 04, 2025. Corrected database connection to use original Neon database instead of local PostgreSQL
 - July 04, 2025. Verified all API endpoints responding correctly with JWT authentication and real data from Neon database
+- July 04, 2025. Fixed purchase orders automatic categorization - all new purchase orders now create accounts payable with "Fornecedores" category
+- July 04, 2025. Implemented automatic overdue status update - accounts payable past due date automatically change from "pending" to "overdue"
+- July 04, 2025. Enhanced accounts payable module with real-time status management and proper visual indicators for overdue accounts
