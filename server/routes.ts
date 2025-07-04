@@ -10,7 +10,8 @@ import {
   insertCustomerSchema, insertProductSchema, insertSaleSchema, insertQuoteSchema, 
   insertQuoteItemSchema, insertPrescriptionSchema, insertPrescriptionFileSchema, 
   insertAppointmentSchema, insertFinancialAccountSchema, insertSupplierSchema,
-  insertExpenseCategorySchema, insertAccountPayableSchema, insertPaymentHistorySchema
+  insertExpenseCategorySchema, insertAccountPayableSchema, insertPaymentHistorySchema,
+  insertPurchaseOrderSchema, insertPurchaseReceiptSchema, insertSupplierCategorySchema
 } from "@shared/schema";
 import { z } from "zod";
 import { PDFService } from "./pdf-service";
@@ -1093,6 +1094,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await storage.processRecurringPayments();
       res.json({ message: "Recurring payments processed successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Purchase Orders Routes
+  app.get("/api/purchase-orders", authenticateToken, async (req, res) => {
+    try {
+      const { limit, offset, status, supplierId } = req.query;
+      const purchaseOrders = await storage.getPurchaseOrders(
+        status as string,
+        supplierId ? parseInt(supplierId as string) : undefined,
+        limit ? parseInt(limit as string) : undefined,
+        offset ? parseInt(offset as string) : undefined
+      );
+      res.json(purchaseOrders);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/purchase-orders/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const purchaseOrder = await storage.getPurchaseOrderWithDetails(parseInt(id));
+      if (!purchaseOrder) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+      res.json(purchaseOrder);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/purchase-orders", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { items, ...orderData } = req.body;
+      const validatedOrderData = insertPurchaseOrderSchema.parse({
+        ...orderData,
+        userId: req.user?.userId,
+      });
+      
+      const purchaseOrder = await storage.createPurchaseOrder(validatedOrderData, items);
+      res.status(201).json(purchaseOrder);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/purchase-orders/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { items, ...orderData } = req.body;
+      const validatedOrderData = insertPurchaseOrderSchema.partial().parse(orderData);
+      
+      const purchaseOrder = await storage.updatePurchaseOrder(parseInt(id), validatedOrderData, items);
+      if (!purchaseOrder) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+      res.json(purchaseOrder);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/purchase-orders/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePurchaseOrder(parseInt(id));
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Purchase Receipts Routes
+  app.get("/api/purchase-receipts", authenticateToken, async (req, res) => {
+    try {
+      const { purchaseOrderId, limit, offset } = req.query;
+      const receipts = await storage.getPurchaseReceipts(
+        purchaseOrderId ? parseInt(purchaseOrderId as string) : undefined,
+        limit ? parseInt(limit as string) : undefined,
+        offset ? parseInt(offset as string) : undefined
+      );
+      res.json(receipts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/purchase-receipts/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const receipt = await storage.getPurchaseReceiptWithDetails(parseInt(id));
+      if (!receipt) {
+        return res.status(404).json({ message: "Purchase receipt not found" });
+      }
+      res.json(receipt);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/purchase-receipts", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { items, ...receiptData } = req.body;
+      const validatedReceiptData = insertPurchaseReceiptSchema.parse({
+        ...receiptData,
+        userId: req.user?.userId,
+      });
+      
+      const receipt = await storage.createPurchaseReceipt(validatedReceiptData, items);
+      res.status(201).json(receipt);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Supplier Categories Routes
+  app.get("/api/supplier-categories", authenticateToken, async (req, res) => {
+    try {
+      const categories = await storage.getSupplierCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/supplier-categories", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertSupplierCategorySchema.parse(req.body);
+      const category = await storage.createSupplierCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Purchase Reports Routes
+  app.get("/api/purchase-reports/summary", authenticateToken, async (req, res) => {
+    try {
+      const { startDate, endDate, supplierId } = req.query;
+      const summary = await storage.getPurchaseReportSummary(
+        startDate as string,
+        endDate as string,
+        supplierId ? parseInt(supplierId as string) : undefined
+      );
+      res.json(summary);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/purchase-reports/by-supplier", authenticateToken, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const report = await storage.getPurchasesBySupplierReport(
+        startDate as string,
+        endDate as string
+      );
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/purchase-reports/by-category", authenticateToken, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const report = await storage.getPurchasesByCategoryReport(
+        startDate as string,
+        endDate as string
+      );
+      res.json(report);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

@@ -17,7 +17,8 @@ import {
   ChevronDown,
   ChevronRight,
   CreditCard,
-  Receipt
+  Receipt,
+  Truck
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Orçamentos", href: "/quotes", icon: FileEdit },
   { name: "Vendas", href: "/sales", icon: ShoppingCart },
+  { name: "Compras", href: "/purchases", icon: Truck },
   { 
     name: "Financeiro", 
     href: "/financial", 

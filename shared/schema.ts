@@ -399,6 +399,111 @@ export const paymentHistoryRelations = relations(paymentHistory, ({ one }) => ({
   }),
 }));
 
+// Purchase Orders table
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  orderNumber: text("order_number").notNull().unique(),
+  orderDate: timestamp("order_date").notNull().defaultNow(),
+  expectedDeliveryDate: timestamp("expected_delivery_date"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("pending"), // pending, partially_received, received, cancelled
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Purchase Order Items table
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: serial("id").primaryKey(),
+  purchaseOrderId: integer("purchase_order_id").notNull().references(() => purchaseOrders.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  receivedQuantity: integer("received_quantity").notNull().default(0),
+});
+
+// Purchase Receipts table (for tracking deliveries)
+export const purchaseReceipts = pgTable("purchase_receipts", {
+  id: serial("id").primaryKey(),
+  purchaseOrderId: integer("purchase_order_id").notNull().references(() => purchaseOrders.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  receiptNumber: text("receipt_number").notNull().unique(),
+  receiptDate: timestamp("receipt_date").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Purchase Receipt Items table
+export const purchaseReceiptItems = pgTable("purchase_receipt_items", {
+  id: serial("id").primaryKey(),
+  receiptId: integer("receipt_id").notNull().references(() => purchaseReceipts.id),
+  purchaseOrderItemId: integer("purchase_order_item_id").notNull().references(() => purchaseOrderItems.id),
+  receivedQuantity: integer("received_quantity").notNull(),
+  notes: text("notes"),
+});
+
+// Extended suppliers table with additional fields for purchasing
+export const supplierCategories = pgTable("supplier_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").notNull().default("#6B7280"),
+});
+
+// Relations for purchase orders
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  supplier: one(suppliers, {
+    fields: [purchaseOrders.supplierId],
+    references: [suppliers.id],
+  }),
+  user: one(users, {
+    fields: [purchaseOrders.userId],
+    references: [users.id],
+  }),
+  items: many(purchaseOrderItems),
+  receipts: many(purchaseReceipts),
+}));
+
+export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
+  purchaseOrder: one(purchaseOrders, {
+    fields: [purchaseOrderItems.purchaseOrderId],
+    references: [purchaseOrders.id],
+  }),
+  product: one(products, {
+    fields: [purchaseOrderItems.productId],
+    references: [products.id],
+  }),
+}));
+
+export const purchaseReceiptsRelations = relations(purchaseReceipts, ({ one, many }) => ({
+  purchaseOrder: one(purchaseOrders, {
+    fields: [purchaseReceipts.purchaseOrderId],
+    references: [purchaseOrders.id],
+  }),
+  user: one(users, {
+    fields: [purchaseReceipts.userId],
+    references: [users.id],
+  }),
+  items: many(purchaseReceiptItems),
+}));
+
+export const purchaseReceiptItemsRelations = relations(purchaseReceiptItems, ({ one }) => ({
+  receipt: one(purchaseReceipts, {
+    fields: [purchaseReceiptItems.receiptId],
+    references: [purchaseReceipts.id],
+  }),
+  purchaseOrderItem: one(purchaseOrderItems, {
+    fields: [purchaseReceiptItems.purchaseOrderItemId],
+    references: [purchaseOrderItems.id],
+  }),
+}));
+
+export const supplierCategoriesRelations = relations(supplierCategories, ({ many }) => ({
+  suppliers: many(suppliers),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -567,3 +672,54 @@ export type InsertAccountPayable = z.infer<typeof insertAccountPayableSchema>;
 
 export type PaymentHistory = typeof paymentHistory.$inferSelect;
 export type InsertPaymentHistory = z.infer<typeof insertPaymentHistorySchema>;
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  orderNumber: true,
+  createdAt: true,
+}).extend({
+  orderDate: z.union([z.string(), z.date()]).transform((val) => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
+  expectedDeliveryDate: z.union([z.string(), z.date(), z.null()]).optional().transform((val) => 
+    !val ? null : typeof val === 'string' ? new Date(val) : val
+  ),
+});
+
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
+  id: true,
+  receivedQuantity: true,
+});
+
+export const insertPurchaseReceiptSchema = createInsertSchema(purchaseReceipts).omit({
+  id: true,
+  receiptNumber: true,
+  createdAt: true,
+}).extend({
+  receiptDate: z.union([z.string(), z.date()]).transform((val) => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
+});
+
+export const insertPurchaseReceiptItemSchema = createInsertSchema(purchaseReceiptItems).omit({
+  id: true,
+});
+
+export const insertSupplierCategorySchema = createInsertSchema(supplierCategories).omit({
+  id: true,
+});
+
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
+export type InsertPurchaseOrderItem = z.infer<typeof insertPurchaseOrderItemSchema>;
+
+export type PurchaseReceipt = typeof purchaseReceipts.$inferSelect;
+export type InsertPurchaseReceipt = z.infer<typeof insertPurchaseReceiptSchema>;
+
+export type PurchaseReceiptItem = typeof purchaseReceiptItems.$inferSelect;
+export type InsertPurchaseReceiptItem = z.infer<typeof insertPurchaseReceiptItemSchema>;
+
+export type SupplierCategory = typeof supplierCategories.$inferSelect;
+export type InsertSupplierCategory = z.infer<typeof insertSupplierCategorySchema>;

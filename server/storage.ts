@@ -2,6 +2,7 @@ import {
   users, customers, products, productCategories, prescriptions, prescriptionFiles,
   sales, saleItems, quotes, quoteItems, financialAccounts, appointments,
   suppliers, expenseCategories, accountsPayable, paymentHistory,
+  purchaseOrders, purchaseOrderItems, purchaseReceipts, purchaseReceiptItems, supplierCategories,
   type User, type InsertUser, type Customer, type InsertCustomer,
   type Product, type InsertProduct, type ProductCategory, type InsertProductCategory,
   type Prescription, type InsertPrescription, type PrescriptionFile, type InsertPrescriptionFile,
@@ -9,7 +10,9 @@ import {
   type QuoteItem, type InsertQuoteItem, type FinancialAccount, type InsertFinancialAccount,
   type Appointment, type InsertAppointment, type Supplier, type InsertSupplier,
   type ExpenseCategory, type InsertExpenseCategory, type AccountPayable, type InsertAccountPayable,
-  type PaymentHistory, type InsertPaymentHistory
+  type PaymentHistory, type InsertPaymentHistory, type PurchaseOrder, type InsertPurchaseOrder,
+  type PurchaseOrderItem, type InsertPurchaseOrderItem, type PurchaseReceipt, type InsertPurchaseReceipt,
+  type PurchaseReceiptItem, type InsertPurchaseReceiptItem, type SupplierCategory, type InsertSupplierCategory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, like, or, ilike } from "drizzle-orm";
@@ -145,6 +148,33 @@ export interface IStorage {
     upcomingPayments: number;
     averagePaymentDelay: number;
   }>;
+
+  // Purchase Orders
+  getPurchaseOrders(status?: string, supplierId?: number, limit?: number, offset?: number): Promise<(PurchaseOrder & { supplier: Supplier })[]>;
+  getPurchaseOrderWithDetails(id: number): Promise<(PurchaseOrder & { supplier: Supplier; items: (PurchaseOrderItem & { product: Product })[] }) | undefined>;
+  createPurchaseOrder(order: InsertPurchaseOrder, items: InsertPurchaseOrderItem[]): Promise<PurchaseOrder>;
+  updatePurchaseOrder(id: number, order: Partial<InsertPurchaseOrder>, items?: InsertPurchaseOrderItem[]): Promise<PurchaseOrder | undefined>;
+  deletePurchaseOrder(id: number): Promise<boolean>;
+
+  // Purchase Receipts
+  getPurchaseReceipts(purchaseOrderId?: number, limit?: number, offset?: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder })[]>;
+  getPurchaseReceiptWithDetails(id: number): Promise<(PurchaseReceipt & { purchaseOrder: PurchaseOrder; items: (PurchaseReceiptItem & { purchaseOrderItem: PurchaseOrderItem & { product: Product } })[] }) | undefined>;
+  createPurchaseReceipt(receipt: InsertPurchaseReceipt, items: InsertPurchaseReceiptItem[]): Promise<PurchaseReceipt>;
+
+  // Supplier Categories
+  getSupplierCategories(): Promise<SupplierCategory[]>;
+  createSupplierCategory(category: InsertSupplierCategory): Promise<SupplierCategory>;
+
+  // Purchase Reports
+  getPurchaseReportSummary(startDate: string, endDate: string, supplierId?: number): Promise<{
+    totalOrders: number;
+    totalAmount: string;
+    averageOrderValue: string;
+    pendingOrders: number;
+    receivedOrders: number;
+  }>;
+  getPurchasesBySupplierReport(startDate: string, endDate: string): Promise<{ supplier: string; totalAmount: string; orderCount: number }[]>;
+  getPurchasesByCategoryReport(startDate: string, endDate: string): Promise<{ category: string; totalAmount: string; orderCount: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
