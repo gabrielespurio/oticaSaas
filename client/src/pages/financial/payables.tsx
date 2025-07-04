@@ -40,9 +40,8 @@ export default function PayablesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: payables = [], isLoading } = useQuery<FinancialAccount[]>({
-    queryKey: ["/api/financial/accounts"],
-    select: (data: any[]) => data.filter((account: any) => account.type === "payable"),
+  const { data: payables = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/accounts-payable"],
   });
 
   const editForm = useForm<EditPayableData>({
@@ -63,9 +62,9 @@ export default function PayablesPage() {
 
   const editPayableMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: EditPayableData }) => 
-      apiRequest("PATCH", `/api/financial/accounts/${id}`, data),
+      apiRequest("PATCH", `/api/accounts-payable/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/financial/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable"] });
       setIsEditDialogOpen(false);
       setSelectedPayable(null);
       editForm.reset();
@@ -85,15 +84,16 @@ export default function PayablesPage() {
 
   const createPayableMutation = useMutation({
     mutationFn: (data: NewPayableData) => 
-      apiRequest("POST", "/api/financial/accounts", {
+      apiRequest("POST", "/api/accounts-payable", {
         ...data,
-        type: "payable",
         status: "pending",
-        amount: parseFloat(data.amount),
+        totalAmount: parseFloat(data.amount),
+        remainingAmount: parseFloat(data.amount),
+        paidAmount: 0,
         dueDate: new Date(data.dueDate).toISOString(),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/financial/accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable"] });
       setIsNewPayableDialogOpen(false);
       newPayableForm.reset();
       toast({

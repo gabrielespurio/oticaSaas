@@ -169,3 +169,6 @@ Changelog:
 - July 04, 2025. Completed migration from Replit Agent to Replit environment, fixed missing purchase order database tables
 - July 04, 2025. Created and executed scripts to create missing purchase_orders, purchase_order_items, purchase_receipts, and purchase_receipt_items tables
 - July 04, 2025. Fixed purchase order creation error by ensuring all required database tables exist
+- July 04, 2025. Implemented automatic integration between purchase receipts and accounts payable module
+- July 04, 2025. Fixed frontend endpoints to use correct accounts payable API (/api/accounts-payable) instead of financial accounts
+- July 04, 2025. Purchase receipts now automatically create accounts payable entries with 30-day payment terms
