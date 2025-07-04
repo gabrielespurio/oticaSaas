@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,16 +18,19 @@ import { useToast } from "@/hooks/use-toast";
 interface Supplier {
   id: number;
   name: string;
-  tradeName?: string;
-  cnpj?: string;
-  phone?: string;
-  email?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  totalOrders: number;
-  totalSpent: string;
+  email?: string | null;
+  phone?: string | null;
+  cnpj?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  notes?: string | null;
   isActive: boolean;
+  createdAt: string;
 }
 
 const supplierSchema = z.object({
@@ -52,37 +56,18 @@ export default function SuppliersTab() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Mock data for demonstration
-  const suppliers: Supplier[] = [
-    {
-      id: 1,
-      name: "Óticas Brasil Distribuidora Ltda",
-      tradeName: "Óticas Brasil",
-      cnpj: "12.345.678/0001-90",
-      phone: "(11) 99999-9999",
-      email: "contato@oticasbrasil.com.br",
-      street: "Rua das Armações, 123",
-      city: "São Paulo",
-      state: "SP",
-      totalOrders: 15,
-      totalSpent: "45231.89",
-      isActive: true
-    },
-    {
-      id: 2,
-      name: "Visão Clara Fornecedora Óptica",
-      tradeName: "Visão Clara",
-      cnpj: "98.765.432/0001-10",
-      phone: "(11) 88888-8888",
-      email: "vendas@visaoclara.com.br",
-      street: "Av. dos Óculos, 456",
-      city: "São Paulo",
-      state: "SP",
-      totalOrders: 8,
-      totalSpent: "28450.00",
-      isActive: true
+  // Fetch suppliers from API
+  const { data: suppliers = [], isLoading } = useQuery({
+    queryKey: ["/api/suppliers"],
+    queryFn: () => {
+      const token = localStorage.getItem('token');
+      return fetch("/api/suppliers", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }).then(res => res.json()) as Promise<Supplier[]>
     }
-  ];
+  });
 
   const {
     register,
@@ -113,10 +98,17 @@ export default function SuppliersTab() {
 
   const filteredSuppliers = suppliers.filter((supplier) =>
     supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.tradeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     supplier.cnpj?.includes(searchQuery) ||
     supplier.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div>Carregando fornecedores...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -242,38 +234,44 @@ export default function SuppliersTab() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gasto Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Fornecedores Ativos</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R$ {suppliers.reduce((sum, s) => sum + parseFloat(s.totalSpent), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {suppliers.filter(s => s.isActive).length}
             </div>
-            <p className="text-xs text-muted-foreground">Este ano</p>
+            <p className="text-xs text-muted-foreground">Em operação</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos Realizados</CardTitle>
+            <CardTitle className="text-sm font-medium">Cadastrados Este Mês</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {suppliers.reduce((sum, s) => sum + s.totalOrders, 0)}
+              {suppliers.filter(s => {
+                const createdDate = new Date(s.createdAt);
+                const now = new Date();
+                return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear();
+              }).length}
             </div>
-            <p className="text-xs text-muted-foreground">Total de pedidos</p>
+            <p className="text-xs text-muted-foreground">Novos fornecedores</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+            <CardTitle className="text-sm font-medium">Com Dados Completos</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 1.847,32</div>
-            <p className="text-xs text-muted-foreground">Por pedido</p>
+            <div className="text-2xl font-bold">
+              {suppliers.filter(s => s.email && s.phone && s.cnpj).length}
+            </div>
+            <p className="text-xs text-muted-foreground">Perfis completos</p>
           </CardContent>
         </Card>
       </div>
@@ -313,8 +311,7 @@ export default function SuppliersTab() {
                   <TableHead>CNPJ</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead>Localização</TableHead>
-                  <TableHead>Pedidos</TableHead>
-                  <TableHead>Total Gasto</TableHead>
+                  <TableHead>Criado em</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -325,8 +322,8 @@ export default function SuppliersTab() {
                     <TableCell>
                       <div>
                         <div className="font-medium">{supplier.name}</div>
-                        {supplier.tradeName && (
-                          <div className="text-sm text-muted-foreground">{supplier.tradeName}</div>
+                        {supplier.notes && (
+                          <div className="text-sm text-muted-foreground">{supplier.notes}</div>
                         )}
                       </div>
                     </TableCell>
@@ -355,9 +352,8 @@ export default function SuppliersTab() {
                         </div>
                       ) : "—"}
                     </TableCell>
-                    <TableCell>{supplier.totalOrders}</TableCell>
                     <TableCell>
-                      R$ {parseFloat(supplier.totalSpent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {new Date(supplier.createdAt).toLocaleDateString('pt-BR')}
                     </TableCell>
                     <TableCell>
                       <Badge variant={supplier.isActive ? "default" : "secondary"}>
@@ -398,16 +394,15 @@ export default function SuppliersTab() {
                 <div>
                   <h4 className="font-semibold mb-2">Informações Básicas</h4>
                   <p><strong>Razão Social:</strong> {selectedSupplier.name}</p>
-                  {selectedSupplier.tradeName && (
-                    <p><strong>Nome Fantasia:</strong> {selectedSupplier.tradeName}</p>
-                  )}
                   <p><strong>CNPJ:</strong> {selectedSupplier.cnpj || "—"}</p>
+                  <p><strong>Criado em:</strong> {new Date(selectedSupplier.createdAt).toLocaleDateString('pt-BR')}</p>
                 </div>
                 <div>
-                  <h4 className="font-semibold mb-2">Estatísticas</h4>
-                  <p><strong>Total de Pedidos:</strong> {selectedSupplier.totalOrders}</p>
-                  <p><strong>Total Gasto:</strong> R$ {parseFloat(selectedSupplier.totalSpent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  <h4 className="font-semibold mb-2">Status</h4>
                   <p><strong>Status:</strong> {selectedSupplier.isActive ? "Ativo" : "Inativo"}</p>
+                  {selectedSupplier.notes && (
+                    <p><strong>Observações:</strong> {selectedSupplier.notes}</p>
+                  )}
                 </div>
               </div>
               
