@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -59,13 +60,14 @@ export default function SuppliersTab() {
   // Fetch suppliers from API
   const { data: suppliers = [], isLoading } = useQuery({
     queryKey: ["/api/suppliers"],
-    queryFn: () => {
-      const token = localStorage.getItem('token');
-      return fetch("/api/suppliers", {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }).then(res => res.json()) as Promise<Supplier[]>
+    queryFn: async () => {
+      try {
+        const data = await apiRequest("GET", "/api/suppliers");
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching suppliers:', error);
+        return [];
+      }
     }
   });
 
@@ -89,18 +91,18 @@ export default function SuppliersTab() {
   };
 
   const handleViewSupplier = (supplierId: number) => {
-    const supplier = suppliers.find(s => s.id === supplierId);
+    const supplier = Array.isArray(suppliers) ? suppliers.find(s => s.id === supplierId) : null;
     if (supplier) {
       setSelectedSupplier(supplier);
       setIsViewDialogOpen(true);
     }
   };
 
-  const filteredSuppliers = suppliers.filter((supplier) =>
+  const filteredSuppliers = Array.isArray(suppliers) ? suppliers.filter((supplier) =>
     supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     supplier.cnpj?.includes(searchQuery) ||
     supplier.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) : [];
 
   if (isLoading) {
     return (
