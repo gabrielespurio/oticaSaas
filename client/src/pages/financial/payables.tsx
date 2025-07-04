@@ -42,6 +42,7 @@ export default function PayablesPage() {
 
   const { data: payables = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/accounts-payable"],
+    queryFn: () => apiRequest("GET", "/api/accounts-payable"),
   });
 
   const editForm = useForm<EditPayableData>({
