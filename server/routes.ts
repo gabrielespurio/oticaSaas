@@ -1205,7 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/purchase-receipts", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const { items, ...receiptData } = req.body;
+      const { items = [], ...receiptData } = req.body;
       const validatedReceiptData = insertPurchaseReceiptSchema.parse({
         ...receiptData,
         userId: req.user?.userId,

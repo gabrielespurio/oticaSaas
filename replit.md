@@ -158,3 +158,7 @@ Changelog:
 - July 03, 2025. Transformed accounts receivable interface from card format to table format for improved data visualization
 - July 03, 2025. Completed migration from Replit Agent to Replit environment with database schema fixes for sales module
 - July 03, 2025. Verified accounts payable module maintains consistent layout pattern with sidebar menu and modal for new entries
+- July 04, 2025. Fixed purchase orders module with proper API integration for suppliers and products dropdowns
+- July 04, 2025. Corrected apiRequest function calls to include HTTP method parameter (GET requests)
+- July 04, 2025. Implemented complete purchase receipts functionality with real API integration replacing mock data
+- July 04, 2025. Fixed purchase receipts API to handle optional items parameter for simple receipt registration
