@@ -15,7 +15,7 @@ import {
   type PurchaseReceiptItem, type InsertPurchaseReceiptItem, type SupplierCategory, type InsertSupplierCategory
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, count, sql, like, or, ilike, sum } from "drizzle-orm";
+import { eq, desc, and, gte, lte, count, sql, like, or, ilike, sum, notExists, exists } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -150,7 +150,7 @@ export interface IStorage {
   }>;
 
   // Purchase Orders
-  getPurchaseOrders(status?: string, supplierId?: number, limit?: number, offset?: number): Promise<(PurchaseOrder & { supplier: Supplier })[]>;
+  getPurchaseOrders(status?: string, supplierId?: number, limit?: number, offset?: number, onlyPending?: boolean): Promise<(PurchaseOrder & { supplier: Supplier })[]>;
   getPurchaseOrderWithDetails(id: number): Promise<(PurchaseOrder & { supplier: Supplier; items: (PurchaseOrderItem & { product: Product })[] }) | undefined>;
   createPurchaseOrder(order: InsertPurchaseOrder, items: InsertPurchaseOrderItem[]): Promise<PurchaseOrder>;
   updatePurchaseOrder(id: number, order: Partial<InsertPurchaseOrder>, items?: InsertPurchaseOrderItem[]): Promise<PurchaseOrder | undefined>;
@@ -1352,7 +1352,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Purchase Orders Implementation
-  async getPurchaseOrders(status?: string, supplierId?: number, limit?: number, offset?: number): Promise<(PurchaseOrder & { supplier: Supplier })[]> {
+  async getPurchaseOrders(status?: string, supplierId?: number, limit?: number, offset?: number, onlyPending?: boolean): Promise<(PurchaseOrder & { supplier: Supplier })[]> {
     try {
       // Build conditions array
       const conditions = [];
@@ -1397,6 +1397,16 @@ export class DatabaseStorage implements IStorage {
         .from(purchaseOrders)
         .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
         .orderBy(desc(purchaseOrders.createdAt));
+
+      // If onlyPending is true, exclude orders that already have receipts
+      if (onlyPending) {
+        conditions.push(
+          notExists(
+            db.select().from(purchaseReceipts)
+              .where(eq(purchaseReceipts.purchaseOrderId, purchaseOrders.id))
+          )
+        );
+      }
 
       // Apply conditions if any
       if (conditions.length > 0) {

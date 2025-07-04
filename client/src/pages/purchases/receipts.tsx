@@ -62,10 +62,10 @@ export default function ReceiptsTab() {
     queryFn: () => apiRequest("GET", "/api/purchase-receipts"),
   });
 
-  // Fetch purchase orders for the dropdown
+  // Fetch purchase orders for the dropdown (only pending orders)
   const { data: purchaseOrders = [], isLoading: ordersLoading } = useQuery({
-    queryKey: ["/api/purchase-orders"],
-    queryFn: () => apiRequest("GET", "/api/purchase-orders"),
+    queryKey: ["/api/purchase-orders", "pending"],
+    queryFn: () => apiRequest("GET", "/api/purchase-orders?onlyPending=true"),
   });
 
   // Create receipt mutation
@@ -74,6 +74,8 @@ export default function ReceiptsTab() {
       apiRequest("POST", "/api/purchase-receipts", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-receipts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders", "pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable"] });
       toast({
         title: "Sucesso",
         description: "Recebimento registrado com sucesso!",

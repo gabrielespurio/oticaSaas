@@ -1102,12 +1102,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase Orders Routes
   app.get("/api/purchase-orders", authenticateToken, async (req, res) => {
     try {
-      const { limit, offset, status, supplierId } = req.query;
+      const { limit, offset, status, supplierId, onlyPending } = req.query;
       const purchaseOrders = await storage.getPurchaseOrders(
         status as string,
         supplierId ? parseInt(supplierId as string) : undefined,
         limit ? parseInt(limit as string) : undefined,
-        offset ? parseInt(offset as string) : undefined
+        offset ? parseInt(offset as string) : undefined,
+        onlyPending === 'true'
       );
       res.json(purchaseOrders);
     } catch (error) {
