@@ -114,10 +114,15 @@ export default function PurchaseOrdersTab() {
   });
 
   // Fetch suppliers from API
-  const { data: suppliers = [], isLoading: suppliersLoading } = useQuery({
+  const { data: suppliers = [], isLoading: suppliersLoading, error: suppliersError } = useQuery({
     queryKey: ["/api/suppliers"],
     queryFn: () => apiRequest("/api/suppliers"),
   });
+
+  // Debug log
+  console.log('Suppliers loading:', suppliersLoading);
+  console.log('Suppliers data:', suppliers);
+  console.log('Suppliers error:', suppliersError);
 
   // Fetch products from API
   const { data: products = [], isLoading: productsLoading } = useQuery({
