@@ -110,24 +110,19 @@ export default function PurchaseOrdersTab() {
   // Fetch purchase orders from API
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/purchase-orders"],
-    queryFn: () => apiRequest("/api/purchase-orders"),
+    queryFn: () => apiRequest("GET", "/api/purchase-orders"),
   });
 
   // Fetch suppliers from API
   const { data: suppliers = [], isLoading: suppliersLoading, error: suppliersError } = useQuery({
     queryKey: ["/api/suppliers"],
-    queryFn: () => apiRequest("/api/suppliers"),
+    queryFn: () => apiRequest("GET", "/api/suppliers"),
   });
-
-  // Debug log
-  console.log('Suppliers loading:', suppliersLoading);
-  console.log('Suppliers data:', suppliers);
-  console.log('Suppliers error:', suppliersError);
 
   // Fetch products from API
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ["/api/products"],
-    queryFn: () => apiRequest("/api/products"),
+    queryFn: () => apiRequest("GET", "/api/products"),
   });
 
   // Create purchase order mutation
@@ -197,7 +192,7 @@ export default function PurchaseOrdersTab() {
   };
 
   const handleViewOrder = (orderId: number) => {
-    const order = orders.find(o => o.id === orderId);
+    const order = orders.find((o: any) => o.id === orderId);
     if (order) {
       setSelectedOrder(order);
       setIsViewDialogOpen(true);
