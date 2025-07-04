@@ -1536,6 +1536,29 @@ export class DatabaseStorage implements IStorage {
           );
       }
 
+      // Get supplier information for the accounts payable
+      const [supplier] = await tx
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.id, purchaseOrder.supplierId));
+
+      // Create accounts payable entry for the purchase order
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30); // Due in 30 days
+
+      await tx
+        .insert(accountsPayable)
+        .values({
+          supplierId: purchaseOrder.supplierId,
+          userId: purchaseOrder.userId,
+          description: `Pedido de Compra ${orderNumber}`,
+          totalAmount: totalAmount.toFixed(2),
+          remainingAmount: totalAmount.toFixed(2),
+          dueDate: dueDate,
+          status: 'pending',
+          purchaseOrderId: purchaseOrder.id,
+        });
+
       return [purchaseOrder];
     });
 

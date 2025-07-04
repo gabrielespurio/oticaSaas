@@ -231,6 +231,7 @@ export const accountsPayable = pgTable("accounts_payable", {
   status: text("status").notNull().default("pending"), // pending, paid, overdue, cancelled
   notes: text("notes"),
   parentId: integer("parent_id"), // para parcelas - self reference
+  purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id),
   attachments: jsonb("attachments"), // para comprovantes
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
