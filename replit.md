@@ -172,3 +172,5 @@ Changelog:
 - July 04, 2025. Implemented automatic integration between purchase receipts and accounts payable module
 - July 04, 2025. Fixed frontend endpoints to use correct accounts payable API (/api/accounts-payable) instead of financial accounts
 - July 04, 2025. Purchase receipts now automatically create accounts payable entries with 30-day payment terms
+- July 04, 2025. Synchronized purchase module with database by creating sample purchase orders and receipts data
+- July 04, 2025. Verified purchase orders and receipts are displaying correctly in the system with proper API integration
