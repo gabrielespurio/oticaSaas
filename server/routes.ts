@@ -951,6 +951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json(accounts);
     } catch (error) {
+      console.error("Error getting accounts payable:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

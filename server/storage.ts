@@ -15,7 +15,7 @@ import {
   type PurchaseReceiptItem, type InsertPurchaseReceiptItem, type SupplierCategory, type InsertSupplierCategory
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, desc, and, gte, lte, count, sql, like, or, ilike, sum, notExists, exists } from "drizzle-orm";
+import { eq, desc, and, gte, lte, lt, count, sql, like, or, ilike, sum, notExists, exists } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -1087,6 +1087,7 @@ export class DatabaseStorage implements IStorage {
       status: accountsPayable.status,
       notes: accountsPayable.notes,
       parentId: accountsPayable.parentId,
+      purchaseOrderId: accountsPayable.purchaseOrderId,
       attachments: accountsPayable.attachments,
       createdAt: accountsPayable.createdAt,
       supplier: suppliers,
@@ -1127,6 +1128,7 @@ export class DatabaseStorage implements IStorage {
       status: accountsPayable.status,
       notes: accountsPayable.notes,
       parentId: accountsPayable.parentId,
+      purchaseOrderId: accountsPayable.purchaseOrderId,
       attachments: accountsPayable.attachments,
       createdAt: accountsPayable.createdAt,
       supplier: suppliers,
