@@ -346,13 +346,18 @@ export default function ReceiptsTab() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setValue("purchaseOrderId", order.id);
-                            setIsCreateDialogOpen(true);
+                            // Registrar recebimento automaticamente
+                            const receiptData = {
+                              purchaseOrderId: order.id,
+                              receiptDate: new Date().toISOString().split('T')[0],
+                            };
+                            createReceiptMutation.mutate(receiptData);
                           }}
                           className="gap-1"
+                          disabled={createReceiptMutation.isPending}
                         >
                           <CheckCircle className="h-4 w-4" />
-                          Receber
+                          {createReceiptMutation.isPending ? "Processando..." : "Receber"}
                         </Button>
                       </TableCell>
                     </TableRow>
