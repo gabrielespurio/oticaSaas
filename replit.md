@@ -187,3 +187,6 @@ Changelog:
 - July 05, 2025. Enhanced purchase orders form with payment configuration fields: payment date and installments (1-36)
 - July 05, 2025. Implemented automatic installment calculation showing value per installment based on total amount
 - July 05, 2025. Reorganized purchase orders form layout with payment configuration section after items for better user flow
+- July 05, 2025. Fixed database connection issues by hardcoding the correct Neon database URL to prevent automatic switching
+- July 05, 2025. Added missing payment_date and installments columns to purchase_orders table in production database
+- July 05, 2025. Configured permanent connection to user's specific Neon database: ep-weathered-flower-ac8qi8qh-pooler.sa-east-1.aws.neon.tech
