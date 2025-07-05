@@ -9,9 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Eye, Package, Calendar, TrendingUp } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Plus, Search, Eye, Package, Calendar, TrendingUp, Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,6 +44,11 @@ interface Receipt {
 interface PurchaseOrder {
   id: number;
   orderNumber: string;
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  totalAmount: number;
+  status: string;
+  notes?: string;
   supplier: {
     name: string;
   };
@@ -66,6 +70,12 @@ export default function ReceiptsTab() {
   const { data: purchaseOrders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/purchase-orders", "pending"],
     queryFn: () => apiRequest("GET", "/api/purchase-orders?onlyPending=true"),
+  });
+
+  // Fetch all pending orders to show upcoming deliveries
+  const { data: allPendingOrders = [], isLoading: allPendingLoading } = useQuery({
+    queryKey: ["/api/purchase-orders", "all-pending"],
+    queryFn: () => apiRequest("GET", "/api/purchase-orders?status=pending"),
   });
 
   // Create receipt mutation
@@ -125,6 +135,51 @@ export default function ReceiptsTab() {
     receipt.purchaseOrder.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
     receipt.purchaseOrder.supplier.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Filter and sort pending orders by delivery date proximity
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  
+  const pendingOrdersForToday = allPendingOrders.filter((order: PurchaseOrder) => {
+    if (!order.expectedDeliveryDate) return false;
+    return order.expectedDeliveryDate === todayStr;
+  });
+
+  const upcomingOrders = allPendingOrders
+    .filter((order: PurchaseOrder) => {
+      if (!order.expectedDeliveryDate) return false;
+      return order.expectedDeliveryDate >= todayStr;
+    })
+    .sort((a: PurchaseOrder, b: PurchaseOrder) => {
+      if (!a.expectedDeliveryDate || !b.expectedDeliveryDate) return 0;
+      return new Date(a.expectedDeliveryDate).getTime() - new Date(b.expectedDeliveryDate).getTime();
+    });
+
+  const getDeliveryStatusBadge = (order: PurchaseOrder) => {
+    if (!order.expectedDeliveryDate) return null;
+    
+    const deliveryDate = new Date(order.expectedDeliveryDate);
+    const diffTime = deliveryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" />Atrasado</Badge>;
+    } else if (diffDays === 0) {
+      return <Badge className="bg-blue-500 gap-1"><Clock className="h-3 w-3" />Hoje</Badge>;
+    } else if (diffDays <= 3) {
+      return <Badge className="bg-yellow-500 gap-1"><Clock className="h-3 w-3" />Próximo</Badge>;
+    } else {
+      return <Badge variant="outline" className="gap-1"><Calendar className="h-3 w-3" />Agendado</Badge>;
+    }
+  };
+
+  // Calculate stats from real data
+  const receiptsToday = receipts.filter((receipt: Receipt) => {
+    const receiptDate = new Date(receipt.receiptDate);
+    return receiptDate.toDateString() === today.toDateString();
+  }).length;
+
+  const totalItemsReceived = receipts.length; // Simplified for now - could be enhanced with actual item count
 
   return (
     <div className="space-y-6">
@@ -200,8 +255,8 @@ export default function ReceiptsTab() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">+2 desde ontem</p>
+            <div className="text-2xl font-bold">{receiptsToday}</div>
+            <p className="text-xs text-muted-foreground">Recebimentos de hoje</p>
           </CardContent>
         </Card>
 
@@ -211,8 +266,8 @@ export default function ReceiptsTab() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <p className="text-xs text-muted-foreground">Esta semana</p>
+            <div className="text-2xl font-bold">{totalItemsReceived}</div>
+            <p className="text-xs text-muted-foreground">Total de recebimentos</p>
           </CardContent>
         </Card>
 
@@ -222,11 +277,92 @@ export default function ReceiptsTab() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
+            <div className="text-2xl font-bold">{allPendingOrders.length}</div>
             <p className="text-xs text-muted-foreground">Pedidos aguardando</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Orders for Receipt */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Pedidos Próximos para Recebimento
+          </CardTitle>
+          <CardDescription>
+            Pedidos ordenados por proximidade da data de entrega
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {allPendingLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Carregando pedidos pendentes...
+            </div>
+          ) : upcomingOrders.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum pedido pendente para recebimento
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Pedido</TableHead>
+                    <TableHead>Fornecedor</TableHead>
+                    <TableHead>Data do Pedido</TableHead>
+                    <TableHead>Entrega Prevista</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {upcomingOrders.map((order: PurchaseOrder) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">
+                        {order.orderNumber}
+                      </TableCell>
+                      <TableCell>{order.supplier.name}</TableCell>
+                      <TableCell>{formatDate(order.orderDate)}</TableCell>
+                      <TableCell>
+                        {order.expectedDeliveryDate ? (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(order.expectedDeliveryDate)}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Não definida</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {getDeliveryStatusBadge(order)}
+                      </TableCell>
+                      <TableCell>
+                        R$ {order.totalAmount.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setValue("purchaseOrderId", order.id);
+                            setIsCreateDialogOpen(true);
+                          }}
+                          className="gap-1"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Receber
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Search */}
       <Card>
@@ -284,7 +420,7 @@ export default function ReceiptsTab() {
                       <TableCell>{receipt.purchaseOrder.orderNumber}</TableCell>
                       <TableCell>{receipt.purchaseOrder.supplier.name}</TableCell>
                       <TableCell>
-                        {format(new Date(receipt.receiptDate), "dd/MM/yyyy", { locale: ptBR })}
+                        {formatDate(receipt.receiptDate)}
                       </TableCell>
                       <TableCell>-</TableCell>
                       <TableCell>
