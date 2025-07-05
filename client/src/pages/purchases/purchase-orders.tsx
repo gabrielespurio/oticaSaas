@@ -88,6 +88,8 @@ interface Product {
 const purchaseOrderSchema = z.object({
   supplierId: z.number().min(1, "Fornecedor é obrigatório"),
   expectedDeliveryDate: z.string().optional(),
+  paymentDate: z.string().min(1, "Data de pagamento é obrigatória"),
+  installments: z.number().min(1, "Número de parcelas deve ser maior que 0").max(36, "Máximo de 36 parcelas"),
   notes: z.string().optional(),
   items: z.array(z.object({
     productId: z.number().min(1, "Produto é obrigatório"),
@@ -157,6 +159,7 @@ export default function PurchaseOrdersTab() {
   } = useForm<FormData>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: {
+      installments: 1,
       items: [{ productId: 0, quantity: 1, unitPrice: 0 }],
     },
   });
@@ -276,6 +279,32 @@ export default function PurchaseOrdersTab() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="paymentDate">Data de Pagamento *</Label>
+                  <Input
+                    type="date"
+                    {...register("paymentDate")}
+                  />
+                  {errors.paymentDate && (
+                    <p className="text-sm text-red-500">{errors.paymentDate.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="installments">Quantidade de Parcelas</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="36"
+                    {...register("installments", { valueAsNumber: true })}
+                  />
+                  {errors.installments && (
+                    <p className="text-sm text-red-500">{errors.installments.message}</p>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
@@ -365,10 +394,27 @@ export default function PurchaseOrdersTab() {
                   </div>
                 ))}
 
-                <div className="text-right">
-                  <p className="text-lg font-semibold">
-                    Total: R$ {calculateTotal()}
-                  </p>
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Total do Pedido</p>
+                      <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        R$ {calculateTotal()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Quantidade de Parcelas</p>
+                      <p className="text-lg font-semibold">
+                        {watch("installments") || 1}x
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Valor por Parcela</p>
+                      <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                        R$ {(Number(calculateTotal()) / Number(watch("installments") || 1)).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -408,6 +408,8 @@ export const purchaseOrders = pgTable("purchase_orders", {
   orderNumber: text("order_number").notNull().unique(),
   orderDate: timestamp("order_date").notNull().defaultNow(),
   expectedDeliveryDate: timestamp("expected_delivery_date"),
+  paymentDate: timestamp("payment_date").notNull(),
+  installments: integer("installments").notNull().default(1),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"), // pending, partially_received, received, cancelled
   notes: text("notes"),
@@ -686,6 +688,9 @@ export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit
   ),
   expectedDeliveryDate: z.union([z.string(), z.date(), z.null()]).optional().transform((val) => 
     !val ? null : typeof val === 'string' ? new Date(val) : val
+  ),
+  paymentDate: z.union([z.string(), z.date()]).transform((val) => 
+    typeof val === 'string' ? new Date(val) : val
   ),
 });
 
