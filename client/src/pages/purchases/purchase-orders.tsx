@@ -203,20 +203,6 @@ export default function PurchaseOrdersTab() {
   };
 
   const onSubmit = async (data: FormData) => {
-    console.log("Form submitted with data:", data);
-    console.log("Form errors:", errors);
-    
-    // Check if there are any validation errors
-    if (Object.keys(errors).length > 0) {
-      console.log("Validation errors found:", errors);
-      toast({
-        title: "Erro de Validação",
-        description: "Por favor, corrija os erros no formulário antes de continuar.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     createPurchaseOrderMutation.mutate(data);
   };
 

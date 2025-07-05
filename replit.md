@@ -190,3 +190,5 @@ Changelog:
 - July 05, 2025. Fixed database connection issues by hardcoding the correct Neon database URL to prevent automatic switching
 - July 05, 2025. Added missing payment_date and installments columns to purchase_orders table in production database
 - July 05, 2025. Configured permanent connection to user's specific Neon database: ep-weathered-flower-ac8qi8qh-pooler.sa-east-1.aws.neon.tech
+- July 05, 2025. Fixed accounts payable due date synchronization - now uses purchase order payment date instead of automatic 30-day calculation
+- July 05, 2025. Cleaned existing test data and verified purchase order form functionality with payment date and installments fields
