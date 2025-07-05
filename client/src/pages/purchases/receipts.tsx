@@ -35,6 +35,7 @@ interface Receipt {
   purchaseOrder: {
     id: number;
     orderNumber: string;
+    totalAmount: string;
     supplier: {
       name: string;
     };
@@ -401,11 +402,10 @@ export default function ReceiptsTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Número</TableHead>
                   <TableHead>Pedido</TableHead>
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Data</TableHead>
-                  <TableHead>Itens</TableHead>
+                  <TableHead>Valor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -413,22 +413,21 @@ export default function ReceiptsTab() {
               <TableBody>
                 {filteredReceipts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       {receiptsLoading ? "Carregando recebimentos..." : "Nenhum recebimento encontrado"}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredReceipts.map((receipt: Receipt) => (
                     <TableRow key={receipt.id}>
-                      <TableCell className="font-medium">
-                        {receipt.receiptNumber}
-                      </TableCell>
-                      <TableCell>{receipt.purchaseOrder.orderNumber}</TableCell>
+                      <TableCell className="font-medium">{receipt.purchaseOrder.orderNumber}</TableCell>
                       <TableCell>{receipt.purchaseOrder.supplier.name}</TableCell>
                       <TableCell>
                         {formatDate(receipt.receiptDate)}
                       </TableCell>
-                      <TableCell>-</TableCell>
+                      <TableCell>
+                        R$ {receipt.purchaseOrder.totalAmount ? Number(receipt.purchaseOrder.totalAmount).toFixed(2) : '0.00'}
+                      </TableCell>
                       <TableCell>
                         <Badge className="bg-green-500">Recebido</Badge>
                       </TableCell>
