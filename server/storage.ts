@@ -1521,7 +1521,17 @@ export class DatabaseStorage implements IStorage {
 
       // Create accounts payable entry for the purchase order
       // Use the payment date from the purchase order as the due date
-      const dueDate = new Date(purchaseOrder.paymentDate);
+      // Handle timezone properly to avoid date shifting
+      const paymentDateStr = purchaseOrder.paymentDate;
+      let dueDate: Date;
+      
+      if (typeof paymentDateStr === 'string') {
+        // If it's a string like "2025-07-05", treat it as local date
+        const [year, month, day] = paymentDateStr.split('-').map(Number);
+        dueDate = new Date(year, month - 1, day); // month is 0-indexed
+      } else {
+        dueDate = new Date(paymentDateStr);
+      }
 
       // Get the "Fornecedores" category ID
       const [suppliersCategory] = await tx
