@@ -184,3 +184,6 @@ Changelog:
 - July 05, 2025. Fixed database schema by adding missing purchase_order_id column to accounts_payable table
 - July 05, 2025. Connected application to existing Neon database and seeded sample data for testing
 - July 05, 2025. Fixed quotes module to properly display converted quotes with "Convertido em Venda" status instead of hiding them
+- July 05, 2025. Enhanced purchase orders form with payment configuration fields: payment date and installments (1-36)
+- July 05, 2025. Implemented automatic installment calculation showing value per installment based on total amount
+- July 05, 2025. Reorganized purchase orders form layout with payment configuration section after items for better user flow

@@ -279,30 +279,15 @@ export default function PurchaseOrdersTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="paymentDate">Data de Pagamento *</Label>
-                  <Input
-                    type="date"
-                    {...register("paymentDate")}
-                  />
-                  {errors.paymentDate && (
-                    <p className="text-sm text-red-500">{errors.paymentDate.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="installments">Quantidade de Parcelas</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="36"
-                    {...register("installments", { valueAsNumber: true })}
-                  />
-                  {errors.installments && (
-                    <p className="text-sm text-red-500">{errors.installments.message}</p>
-                  )}
-                </div>
+              <div>
+                <Label htmlFor="paymentDate">Data de Pagamento *</Label>
+                <Input
+                  type="date"
+                  {...register("paymentDate")}
+                />
+                {errors.paymentDate && (
+                  <p className="text-sm text-red-500">{errors.paymentDate.message}</p>
+                )}
               </div>
 
               <div>
@@ -413,6 +398,37 @@ export default function PurchaseOrdersTab() {
                       <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                         R$ {(Number(calculateTotal()) / Number(watch("installments") || 1)).toFixed(2)}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Configuration */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Configuração do Pagamento</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="installments">Quantidade de Parcelas</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="36"
+                      {...register("installments", { valueAsNumber: true })}
+                    />
+                    {errors.installments && (
+                      <p className="text-sm text-red-500">{errors.installments.message}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <div className="w-full">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Valor calculado por parcela:</p>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                        <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                          R$ {(Number(calculateTotal()) / Number(watch("installments") || 1)).toFixed(2)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
