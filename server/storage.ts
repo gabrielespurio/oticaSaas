@@ -1833,6 +1833,12 @@ export class DatabaseStorage implements IStorage {
           });
       }
 
+      // Update purchase order status to "received"
+      await tx
+        .update(purchaseOrders)
+        .set({ status: "received" })
+        .where(eq(purchaseOrders.id, purchaseReceipt.purchaseOrderId));
+
       return [purchaseReceipt];
     });
 

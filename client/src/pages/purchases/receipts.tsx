@@ -75,7 +75,7 @@ export default function ReceiptsTab() {
   // Fetch all pending orders to show upcoming deliveries
   const { data: allPendingOrders = [], isLoading: allPendingLoading } = useQuery({
     queryKey: ["/api/purchase-orders", "all-pending"],
-    queryFn: () => apiRequest("GET", "/api/purchase-orders?status=pending"),
+    queryFn: () => apiRequest("GET", "/api/purchase-orders?onlyPending=true"),
   });
 
   // Create receipt mutation
@@ -85,6 +85,7 @@ export default function ReceiptsTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-receipts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders", "pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders", "all-pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable"] });
       toast({
         title: "Sucesso",
