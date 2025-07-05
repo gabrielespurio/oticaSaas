@@ -53,8 +53,7 @@ import {
   Building,
   AlertCircle,
 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/layout/app-layout";
 
@@ -152,9 +151,7 @@ export default function AccountsPayablePage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/accounts-payable/${id}`, {
-      method: "DELETE",
-    }),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/accounts-payable/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable"] });
       queryClient.invalidateQueries({ queryKey: ["/api/accounts-payable/stats"] });
@@ -182,17 +179,18 @@ export default function AccountsPayablePage() {
 
   const onSubmit = async (data: FormData) => {
     // If installments > 1, create multiple accounts
-    if (data.installments > 1) {
-      const installmentAmount = parseFloat(data.totalAmount) / data.installments;
+    const installments = data.installments || 1;
+    if (installments > 1) {
+      const installmentAmount = parseFloat(data.totalAmount) / installments;
       const baseDate = new Date(data.dueDate);
       
-      for (let i = 1; i <= data.installments; i++) {
+      for (let i = 1; i <= installments; i++) {
         const installmentDate = new Date(baseDate);
         installmentDate.setMonth(installmentDate.getMonth() + (i - 1));
         
         const installmentData = {
           ...data,
-          description: `${data.description} - Parcela ${i}/${data.installments}`,
+          description: `${data.description} - Parcela ${i}/${installments}`,
           totalAmount: installmentAmount.toFixed(2),
           dueDate: installmentDate.toISOString().split('T')[0],
           currentInstallment: i,
@@ -208,7 +206,7 @@ export default function AccountsPayablePage() {
 
   const handleViewAccount = async (accountId: number) => {
     try {
-      const account = await apiRequest(`/api/accounts-payable/${accountId}`);
+      const account = await apiRequest("GET", `/api/accounts-payable/${accountId}`);
       setSelectedAccount(account);
       setIsViewDialogOpen(true);
     } catch (error) {
@@ -440,7 +438,7 @@ export default function AccountsPayablePage() {
                           {new Date(account.dueDate) < new Date() && account.status === 'pending' && (
                             <AlertCircle className="h-4 w-4 text-red-500" />
                           )}
-                          {format(new Date(account.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                          {formatDate(account.dueDate)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -564,9 +562,9 @@ export default function AccountsPayablePage() {
                   max="36"
                   {...register("installments", { valueAsNumber: true })}
                 />
-                {installmentsField > 1 && (
+                {(installmentsField || 1) > 1 && (
                   <p className="text-xs text-muted-foreground">
-                    Será criada 1 parcela por mês, totalizando {installmentsField} contas
+                    Será criada 1 parcela por mês, totalizando {installmentsField || 1} contas
                   </p>
                 )}
               </div>
@@ -642,7 +640,7 @@ export default function AccountsPayablePage() {
                 <div>
                   <Label className="text-sm font-medium">Vencimento</Label>
                   <p className="text-sm">
-                    {format(new Date(selectedAccount.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                    {formatDate(selectedAccount.dueDate)}
                   </p>
                 </div>
                 <div>

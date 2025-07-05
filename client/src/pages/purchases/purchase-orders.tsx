@@ -53,8 +53,7 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 interface PurchaseOrder {
@@ -513,13 +512,13 @@ export default function PurchaseOrdersTab() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(order.orderDate), "dd/MM/yyyy", { locale: ptBR })}
+                        {formatDate(order.orderDate)}
                       </TableCell>
                       <TableCell>
                         {order.expectedDeliveryDate ? (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
-                            {format(new Date(order.expectedDeliveryDate), "dd/MM/yyyy", { locale: ptBR })}
+                            {formatDate(order.expectedDeliveryDate)}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">Não definida</span>
@@ -575,7 +574,7 @@ export default function PurchaseOrdersTab() {
                 <div>
                   <h4 className="font-semibold mb-2">Informações do Pedido</h4>
                   <p><strong>Número:</strong> {selectedOrder.orderNumber}</p>
-                  <p><strong>Data:</strong> {format(new Date(selectedOrder.orderDate), "dd/MM/yyyy", { locale: ptBR })}</p>
+                  <p><strong>Data:</strong> {formatDate(selectedOrder.orderDate)}</p>
                   <p><strong>Status:</strong> {getStatusBadge(selectedOrder.status)}</p>
                 </div>
                 <div>
@@ -583,7 +582,7 @@ export default function PurchaseOrdersTab() {
                   <p><strong>Nome:</strong> {selectedOrder.supplier?.name}</p>
                   <p><strong>Entrega Prevista:</strong> {
                     selectedOrder.expectedDeliveryDate 
-                      ? format(new Date(selectedOrder.expectedDeliveryDate), "dd/MM/yyyy", { locale: ptBR })
+                      ? formatDate(selectedOrder.expectedDeliveryDate)
                       : "Não definida"
                   }</p>
                 </div>

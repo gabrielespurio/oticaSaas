@@ -14,8 +14,23 @@ export function formatCurrency(amount: number | string): string {
 }
 
 export function formatDate(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('pt-BR').format(dateObj);
+  // Handle date strings and avoid timezone issues
+  if (typeof date === 'string') {
+    // If it's an ISO date string, parse it as local date to avoid timezone shifts
+    if (date.includes('T')) {
+      const isoDate = date.split('T')[0];
+      const [year, month, day] = isoDate.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      return new Intl.DateTimeFormat('pt-BR').format(localDate);
+    } else {
+      // For date-only strings like "2025-07-08", parse as local date
+      const [year, month, day] = date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      return new Intl.DateTimeFormat('pt-BR').format(localDate);
+    }
+  }
+  
+  return new Intl.DateTimeFormat('pt-BR').format(date);
 }
 
 export function formatDateTime(date: Date | string): string {
