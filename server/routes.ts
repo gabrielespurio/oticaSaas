@@ -1153,7 +1153,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/purchase-orders", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
+      console.log("Purchase order request body:", JSON.stringify(req.body, null, 2));
       const { items, ...orderData } = req.body;
+      console.log("Order data:", orderData);
+      console.log("Items:", items);
+      
       const validatedOrderData = insertPurchaseOrderSchema.parse({
         ...orderData,
         userId: req.user?.userId,
@@ -1162,7 +1166,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const purchaseOrder = await storage.createPurchaseOrder(validatedOrderData, items);
       res.status(201).json(purchaseOrder);
     } catch (error) {
+      console.error("Error creating purchase order:", error);
       if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
       res.status(500).json({ message: "Internal server error" });
