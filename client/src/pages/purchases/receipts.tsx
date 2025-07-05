@@ -339,7 +339,7 @@ export default function ReceiptsTab() {
                         {getDeliveryStatusBadge(order)}
                       </TableCell>
                       <TableCell>
-                        R$ {order.totalAmount.toFixed(2)}
+                        R$ {order.totalAmount ? Number(order.totalAmount).toFixed(2) : '0.00'}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
