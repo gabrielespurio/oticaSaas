@@ -319,6 +319,8 @@ export default function QuotesPage() {
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
       case "rejected":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      case "converted":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
     }
@@ -332,6 +334,8 @@ export default function QuotesPage() {
         return "Aprovado";
       case "rejected":
         return "Rejeitado";
+      case "converted":
+        return "Convertido em Venda";
       default:
         return status;
     }

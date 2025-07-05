@@ -180,3 +180,7 @@ Changelog:
 - July 04, 2025. Fixed purchase orders automatic categorization - all new purchase orders now create accounts payable with "Fornecedores" category
 - July 04, 2025. Implemented automatic overdue status update - accounts payable past due date automatically change from "pending" to "overdue"
 - July 04, 2025. Enhanced accounts payable module with real-time status management and proper visual indicators for overdue accounts
+- July 05, 2025. Migration from Replit Agent to Replit environment completed successfully
+- July 05, 2025. Fixed database schema by adding missing purchase_order_id column to accounts_payable table
+- July 05, 2025. Connected application to existing Neon database and seeded sample data for testing
+- July 05, 2025. Fixed quotes module to properly display converted quotes with "Convertido em Venda" status instead of hiding them
