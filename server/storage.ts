@@ -1520,8 +1520,8 @@ export class DatabaseStorage implements IStorage {
         .where(eq(suppliers.id, purchaseOrder.supplierId));
 
       // Create accounts payable entry for the purchase order
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30); // Due in 30 days
+      // Use the payment date from the purchase order as the due date
+      const dueDate = new Date(purchaseOrder.paymentDate);
 
       // Get the "Fornecedores" category ID
       const [suppliersCategory] = await tx
