@@ -122,6 +122,11 @@ function Router() {
           <AccountsPayablePage />
         </ProtectedRoute>
       </Route>
+      <Route path="/contas-a-pagar">
+        <ProtectedRoute>
+          <AccountsPayablePage />
+        </ProtectedRoute>
+      </Route>
 
       <Route component={NotFound} />
     </Switch>
