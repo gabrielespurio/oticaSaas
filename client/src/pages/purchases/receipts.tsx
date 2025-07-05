@@ -94,7 +94,7 @@ export default function ReceiptsTab() {
 
   const createReceiptMutation = useMutation({
     mutationFn: (data: ReceiptFormData) => 
-      apiRequest("/api/purchase-receipts", "POST", data),
+      apiRequest("POST", "/api/purchase-receipts", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-receipts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
@@ -117,7 +117,7 @@ export default function ReceiptsTab() {
   // Auto-receive order mutation
   const autoReceiveMutation = useMutation({
     mutationFn: (orderId: number) => 
-      apiRequest("/api/purchase-receipts", "POST", {
+      apiRequest("POST", "/api/purchase-receipts", {
         purchaseOrderId: orderId,
         receiptDate: new Date().toISOString().split("T")[0],
         notes: "Recebimento automático"
